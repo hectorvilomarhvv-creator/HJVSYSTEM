@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Escolar Integral v3.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: rgba(255,255,255,0.15); }
+        .sidebar-item.active { background: rgba(255,255,255,0.2); border-left: 4px solid #60a5fa; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .card-hover { transition: all 0.3s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .grad-reg { background: linear-gradient(135deg, #065f46, #059669, #10b981); }
+        .grad-tech { background: linear-gradient(135deg, #581c87, #7c3aed, #a855f7); }
+        .grad-admin { background: linear-gradient(135deg, #1e3a5f, #2d5a87, #3b82f6); }
+        .grad-teacher { background: linear-gradient(135deg, #92400e, #d97706, #f59e0b); }
+        .grad-psycho { background: linear-gradient(135deg, #831843, #be185d, #ec4899); }
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        .notification-toast { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .photo-upload { border: 2px dashed #d1d5db; transition: all 0.3s; cursor: pointer; }
+        .photo-upload:hover { border-color: #10b981; background: #ecfdf5; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app"></div>
+    <div id="notifContainer" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
+    <script>
+    const DB = {
+        get(k) { try { const d = localStorage.getItem('s3_' + k); return d ? JSON.parse(d) : null; } catch(e) { return null; } },
+        set(k, v) { try { localStorage.setItem('s3_' + k, JSON.stringify(v)); } catch(e) { console.error('DB set error', e); } },
+        init() {
+            if (this.get('init')) return;
+            this.set('courses', ['5to A', '5to B', '4to A', '4to B', '3ro A', '3ro B', '2do A', '1ro A']);
+            this.set('periods', ['P1', 'P2', 'P3', 'P4']);
+            this.set('students', [
+                { id:'est1', nombre:'María García', email:'maria@escuela.com', password:'1234', curso:'5to A', grado:'Secundaria', fechaNacimiento:'2010-03-15', lugarNacimiento:'Santo Domingo', telefono:'809-555-0001', telefonoEmergencia:'809-555-1001', contactoEmergencia:'Ana García (Madre)', direccion:'Calle 27 de Febrero #45', cedula:'001-0000001-0', foto:'', fechaRegistro:'2026-02-01', horaRegistro:'08:00', estado:'Activo', sexo:'Femenino', tipoSangre:'O+', nombrePadre:'Pedro García', nombreMadre:'Ana García', telefonoPadre:'809-555-1002', escuelaProcedencia:'Escuela Los Prados', condicionMedica:'Ninguna', seguroMedico:'ARS Humano', observaciones:'' },
+                { id:'est2', nombre:'Juan Pérez', email:'juan@escuela.com', password:'1234', curso:'5to B', grado:'Secundaria', fechaNacimiento:'2010-07-22', lugarNacimiento:'Santiago', telefono:'809-555-0002', telefonoEmergencia:'809-555-1003', contactoEmergencia:'Rosa Pérez (Madre)', direccion:'Av. Lincoln #120', cedula:'001-0000002-0', foto:'', fechaRegistro:'2026-02-01', horaRegistro:'08:00', estado:'Activo', sexo:'Masculino', tipoSangre:'A+', nombrePadre:'Carlos Pérez', nombreMadre:'Rosa Pérez', telefonoPadre:'809-555-1004', escuelaProcedencia:'Colegio San José', condicionMedica:'Asma', seguroMedico:'ARS Semma', observaciones:'' },
+                { id:'est3', nombre:'Ana López', email:'ana@escuela.com', password:'1234', curso:'4to A', grado:'Secundaria', fechaNacimiento:'2011-01-10', lugarNacimiento:'La Vega', telefono:'809-555-0003', telefonoEmergencia:'809-555-1005', contactoEmergencia:'Miguel López (Padre)', direccion:'Calle Duarte #78', cedula:'001-0000003-0', foto:'', fechaRegistro:'2026-02-15', horaRegistro:'09:00', estado:'Activo', sexo:'Femenino', tipoSangre:'B+', nombrePadre:'Miguel López', nombreMadre:'Carmen López', telefonoPadre:'809-555-1006', escuelaProcedencia:'Escuela Municipal', condicionMedica:'Ninguna', seguroMedico:'ARS Nacional', observaciones:'' },
+                { id:'est4', nombre:'Carlos Ruiz', email:'carlos@escuela.com', password:'1234', curso:'5to A', grado:'Secundaria', fechaNacimiento:'2010-11-05', lugarNacimiento:'San Cristóbal', telefono:'809-555-0004', telefonoEmergencia:'809-555-1007', contactoEmergencia:'María Ruiz (Madre)', direccion:'Calle Colón #33', cedula:'001-0000004-0', foto:'', fechaRegistro:'2026-03-01', horaRegistro:'10:00', estado:'Activo', sexo:'Masculino', tipoSangre:'AB+', nombrePadre:'José Ruiz', nombreMadre:'María Ruiz', telefonoPadre:'809-555-1008', escuelaProcedencia:'Liceo Nacional', condicionMedica:'Alergia al maní', seguroMedico:'ARS Humano', observaciones:'Requiere atención en matemáticas' },
+                { id:'est5', nombre:'Laura Martínez', email:'laura@escuela.com', password:'1234', curso:'3ro A', grado:'Primaria', fechaNacimiento:'2014-06-18', lugarNacimiento:'Higüey', telefono:'809-555-0005', telefonoEmergencia:'809-555-1009', contactoEmergencia:'Pedro Martínez (Padre)', direccion:'Calle Central #12', cedula:'001-0000005-0', foto:'', fechaRegistro:'2026-03-10', horaRegistro:'08:30', estado:'Activo', sexo:'Femenino', tipoSangre:'O+', nombrePadre:'Pedro Martínez', nombreMadre:'Lucía Martínez', telefonoPadre:'809-555-1010', escuelaProcedencia:'Escuela Higüey', condicionMedica:'Ninguna', seguroMedico:'ARS Semma', observaciones:'' },
+            ]);
+            this.set('teachers', [
+                { id:'prof1', nombre:'Prof. Roberto Sánchez', email:'roberto@escuela.com', password:'1234', telefono:'809-555-2001', materias:['mat1','mat2'] },
+                { id:'prof2', nombre:'Prof. Carmen Díaz', email:'carmen@escuela.com', password:'1234', telefono:'809-555-2002', materias:['mat3'] },
+                { id:'prof3', nombre:'Prof. Miguel Torres', email:'miguel@escuela.com', password:'1234', telefono:'809-555-2003', materias:['mat4','mat5'] },
+            ]);
+            this.set('subjects', [
+                { id:'mat1', nombre:'Matemáticas', curso:'5to A', profesorId:'prof1' },
+                { id:'mat2', nombre:'Física', curso:'5to B', profesorId:'prof1' },
+                { id:'mat3', nombre:'Literatura', curso:'4to A', profesorId:'prof2' },
+                { id:'mat4', nombre:'Historia', curso:'5to A', profesorId:'prof3' },
+                { id:'mat5', nombre:'Ciencias Naturales', curso:'5to B', profesorId:'prof3' },
+            ]);
+            this.set('grades', [
+                { id:'cal1', estudianteId:'est1', materiaId:'mat1', profesorId:'prof1', calificacion:92, periodo:'P1', fecha:'2026-04-15', hora:'10:30' },
+                { id:'cal2', estudianteId:'est1', materiaId:'mat4', profesorId:'prof3', calificacion:88, periodo:'P1', fecha:'2026-04-20', hora:'14:00' },
+                { id:'cal3', estudianteId:'est2', materiaId:'mat2', profesorId:'prof1', calificacion:55, periodo:'P1', fecha:'2026-04-15', hora:'10:30' },
+                { id:'cal4', estudianteId:'est2', materiaId:'mat4', profesorId:'prof3', calificacion:80, periodo:'P1', fecha:'2026-04-22', hora:'14:00' },
+                { id:'cal5', estudianteId:'est3', materiaId:'mat3', profesorId:'prof2', calificacion:95, periodo:'P1', fecha:'2026-04-20', hora:'09:00' },
+                { id:'cal6', estudianteId:'est4', materiaId:'mat1', profesorId:'prof1', calificacion:45, periodo:'P1', fecha:'2026-04-15', hora:'10:30' },
+                { id:'cal7', estudianteId:'est4', materiaId:'mat4', profesorId:'prof3', calificacion:62, periodo:'P1', fecha:'2026-04-25', hora:'14:00' },
+                { id:'cal8', estudianteId:'est1', materiaId:'mat1', profesorId:'prof1', calificacion:95, periodo:'P2', fecha:'2026-05-15', hora:'10:30' },
+                { id:'cal9', estudianteId:'est1', materiaId:'mat4', profesorId:'prof3', calificacion:90, periodo:'P2', fecha:'2026-05-20', hora:'14:00' },
+                { id:'cal10', estudianteId:'est2', materiaId:'mat2', profesorId:'prof1', calificacion:65, periodo:'P2', fecha:'2026-05-15', hora:'10:30' },
+            ]);
+            this.set('notes', [
+                { id:'nota1', estudianteId:'est1', profesorId:'prof1', contenido:'Estudiante destacada, excelente disposición.', fecha:'2026-04-10', hora:'08:30' },
+                { id:'nota2', estudianteId:'est4', profesorId:'prof1', contenido:'Dificultades en álgebra. Posible ansiedad ante exámenes.', fecha:'2026-04-18', hora:'11:00' },
+                { id:'nota3', estudianteId:'est2', profesorId:'prof3', contenido:'Ha mejorado notablemente su rendimiento.', fecha:'2026-05-02', hora:'15:30' },
+            ]);
+            this.set('attendance', {});
+            this.set('notifications', []);
+            this.set('users', [
+                { id:'u1', nombre:'Administrador', email:'admin@escuela.com', password:'admin123', role:'admin', telefono:'809-555-9000' },
+                { id:'u2', nombre:'Depto. Tecnología', email:'tecnologia@escuela.com', password:'tech123', role:'tech', telefono:'809-555-9999' },
+                { id:'u3', nombre:'Dpto. Psicología', email:'psicologia@escuela.com', password:'psico123', role:'psychology', telefono:'809-555-8888' },
+                { id:'u4', nombre:'Depto. Registro', email:'registro@escuela.com', password:'reg123', role:'registro', telefono:'809-555-7777' },
+            ]);
+            this.set('techSupport', []);
+            this.set('init', true);
+            console.log('✅ Base de datos inicializada correctamente');
+        }
+    };
+
+    let S = { currentUser: null, userType: null, currentView: 'dashboard', students: [], teachers: [], subjects: [], grades: [], notes: [], courses: [], periods: [], attendance: {}, notifications: [], users: [], techSupport: [] };
+
+    function load() {
+        S.students = DB.get('students') || [];
+        S.teachers = DB.get('teachers') || [];
+        S.subjects = DB.get('subjects') || [];
+        S.grades = DB.get('grades') || [];
+        S.notes = DB.get('notes') || [];
+        S.courses = DB.get('courses') || [];
+        S.periods = DB.get('periods') || ['P1','P2','P3','P4'];
+        S.attendance = DB.get('attendance') || {};
+        S.notifications = DB.get('notifications') || [];
+        S.users = DB.get('users') || [];
+        S.techSupport = DB.get('techSupport') || [];
+        console.log('📦 Estado cargado | Usuarios:', S.users.length, '| Estudiantes:', S.students.length);
+    }
+
+    function save() {
+        DB.set('students', S.students); DB.set('teachers', S.teachers);
+        DB.set('subjects', S.subjects); DB.set('grades', S.grades);
+        DB.set('notes', S.notes); DB.set('courses', S.courses);
+        DB.set('attendance', S.attendance); DB.set('notifications', S.notifications);
+        DB.set('users', S.users); DB.set('techSupport', S.techSupport);
+    }
+
+    function genId() { return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+    function fmtDate(d) { if (!d) return '-'; return new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+    function fmtDT(d, h) { return (d ? fmtDate(d) : '-') + (h ? ' ' + h : ''); }
+    function today() { return new Date().toISOString().split('T')[0]; }
+    function nowTime() { return new Date().toTimeString().substr(0, 5); }
+    function gSub(id) { return (S.subjects.find(s => s.id === id) || {}).nombre || '-'; }
+    function gStu(id) { return S.students.find(s => s.id === id) || { nombre:'-', curso:'', telefono:'', fechaNacimiento:'', estado:'', cedula:'', direccion: '', telefonoEmergencia: '', contactoEmergencia: '', nombreMadre: '' }; }
+    function gTch(id) { return S.teachers.find(t => t.id === id) || { nombre:'-' }; }
+    function gClr(g) { return g >= 90 ? 'text-green-600 bg-green-50' : g >= 70 ? 'text-yellow-600 bg-yellow-50' : g >= 50 ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50'; }
+    function gBadge(g) { return g >= 70 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'; }
+    function getGrad() { return { admin:'grad-admin', teacher:'grad-teacher', student:'grad-teacher', psychology:'grad-psycho', tech:'grad-tech', registro:'grad-reg' }[S.userType] || 'grad-admin'; }
+
+    function notify(msg, type='info') {
+        const c = document.getElementById('notifContainer');
+        const colors = { info:'bg-blue-600', success:'bg-green-600', warning:'bg-yellow-600', error:'bg-red-600' };
+        const icons = { info:'fa-info-circle', success:'fa-check-circle', warning:'fa-exclamation-triangle', error:'fa-times-circle' };
+        const t = document.createElement('div');
+        t.className = `notification-toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-sm`;
+        t.innerHTML = `<i class="fas ${icons[type]}"></i><span class="text-sm">${msg}</span>`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 4000);
+    }
+
+    // ==================== LOGIN CORREGIDO ====================
+    function renderLogin() {
+        document.getElementById('app').innerHTML = `
+            <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden fade-in">
+                    <div class="bg-gradient-to-r from-green-600 to-emerald-700 p-6 text-white text-center">
+                        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-school text-2xl"></i></div>
+                        <h1 class="text-2xl font-bold">SISTEMA ESCOLAR HJVSYSTEM</h1>
+                        <p class="text-green-200 text-sm mt-1">Plataforma de Gestión Académica v1.0 Hector Vilomar</p>
+                    </div>
+                    <div class="p-6">
+                        <div id="loginError" class="hidden bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm font-medium"></div>
+                        <div id="loginSuccess" class="hidden bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm font-medium"></div>
+                        <form id="loginForm" onsubmit="handleLogin(event)">
+                            <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Usuario</label>
+                                <select id="loginType" class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                                    <option value="registro">📋 Departamento de Registro</option>
+                                    <option value="tech">💻 Departamento de Tecnología</option>
+                                    <option value="admin">🔑 Administrador</option>
+                                    <option value="teacher">👨‍🏫 Profesor</option>
+                                    <option value="student">🎓 Estudiante</option>
+                                    <option value="psychology">🧠 Psicología</option>
+                                </select>
+                            </div>
+                            <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label><input type="email" id="loginEmail" required placeholder="correo@escuela.com" class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" id="loginPassword" required placeholder="••••••••" class="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"><i class="fas fa-sign-in-alt mr-2"></i>Iniciar Sesión</button>
+                        </form>
+                        <div class="mt-5 p-4 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1.5">
+                            <p class="font-semibold text-gray-700 mb-2">Cuentas de prueba:</p>
+                            <p class="flex items-center gap-1">📋 <b>Registro:</b> registro@escuela.com / reg123</p>
+                            <p class="flex items-center gap-1">💻 <b>Tecnología:</b> tecnologia@escuela.com / tech123</p>
+                            <p class="flex items-center gap-1">🔑 <b>Admin:</b> admin@escuela.com / admin123</p>
+                            <p class="flex items-center gap-1">👨‍🏫 <b>Profesor:</b> roberto@escuela.com / 1234</p>
+                            <p class="flex items-center gap-1">🎓 <b>Estudiante:</b> maria@escuela.com / 1234</p>
+                            <p class="flex items-center gap-1">🧠 <b>Psicología:</b> psicologia@escuela.com / psico123</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function handleLogin(e) {
+        e.preventDefault();
+        const type = document.getElementById('loginType').value;
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errEl = document.getElementById('loginError');
+        const sucEl = document.getElementById('loginSuccess');
+
+        // Ocultar mensajes previos
+        errEl.classList.add('hidden');
+        sucEl.classList.add('hidden');
+
+        console.log('🔐 Intentando login | Tipo:', type, '| Email:', email, '| Password:', password);
+        console.log('📦 Usuarios en sistema:', S.users.map(u => ({ email: u.email, role: u.role })));
+
+        // 1. Buscar en usuarios del sistema (admin, tech, registro, psychology)
+        let foundUser = null;
+        for (let i = 0; i < S.users.length; i++) {
+            const usr = S.users[i];
+            if (usr.email === email && usr.password === password && usr.role === type) {
+                foundUser = usr;
+                break;
+            }
+        }
+
+        if (foundUser) {
+            S.currentUser = foundUser;
+            S.userType = type;
+            S.currentView = 'dashboard';
+            console.log('✅ Login exitoso (usuario sistema):', foundUser.nombre);
+            notify('Bienvenido, ' + foundUser.nombre, 'success');
+            renderApp();
+            return;
+        }
+
+        // 2. Buscar en profesores
+        if (type === 'teacher') {
+            let foundTeacher = null;
+            for (let i = 0; i < S.teachers.length; i++) {
+                const tch = S.teachers[i];
+                if (tch.email === email && tch.password === password) {
+                    foundTeacher = tch;
+                    break;
+                }
+            }
+            if (foundTeacher) {
+                S.currentUser = foundTeacher;
+                S.userType = 'teacher';
+                S.currentView = 'dashboard';
+                console.log('✅ Login exitoso (profesor):', foundTeacher.nombre);
+                notify('Bienvenido, ' + foundTeacher.nombre, 'success');
+                renderApp();
+                return;
+            }
+        }
+
+        // 3. Buscar en estudiantes
+        if (type === 'student') {
+            let foundStudent = null;
+            for (let i = 0; i < S.students.length; i++) {
+                const stu = S.students[i];
+                if (stu.email === email && stu.password === password) {
+                    foundStudent = stu;
+                    break;
+                }
+            }
+            if (foundStudent) {
+                S.currentUser = foundStudent;
+                S.userType = 'student';
+                S.currentView = 'dashboard';
+                console.log('✅ Login exitoso (estudiante):', foundStudent.nombre);
+                notify('Bienvenido, ' + foundStudent.nombre, 'success');
+                renderApp();
+                return;
+            }
+        }
+
+        // 4. Error
+        console.log('❌ Login fallido - credenciales incorrectas');
+        errEl.textContent = '❌ Credenciales incorrectas. Verifica tu correo, contraseña y tipo de usuario.';
+        errEl.classList.remove('hidden');
+    }
+
+    // ==================== APP ====================
+    function renderApp() {
+        load();
+        const items = getSidebar();
+        document.getElementById('app').innerHTML = `
+            <div class="flex h-screen no-print">
+                <aside class="w-64 ${getGrad()} text-white flex flex-col shadow-xl">
+                    <div class="p-5 border-b border-white/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center"><i class="fas fa-school"></i></div>
+                            <div><h2 class="font-bold text-sm">Sistema Escolar</h2><p class="text-[10px] text-white/50">${roleLabel()}</p></div>
+                        </div>
+                    </div>
+                    <nav class="flex-1 py-3 overflow-y-auto">${items.map(it => `<div onclick="nav('${it.view}')" class="sidebar-item cursor-pointer px-5 py-2.5 flex items-center gap-3 ${S.currentView === it.view ? 'active' : ''}"><i class="${it.icon} w-5 text-center text-sm"></i><span class="text-sm">${it.label}</span>${it.badge ? `<span class="ml-auto bg-red-500 text-[10px] px-1.5 py-0.5 rounded-full">${it.badge}</span>` : ''}</div>`).join('')}</nav>
+                    <div class="p-4 border-t border-white/10">
+                        <div class="flex items-center gap-3 mb-3"><div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-xs"></i></div><div class="min-w-0"><p class="text-sm font-medium truncate">${S.currentUser.nombre}</p><p class="text-[10px] text-white/50 truncate">${S.currentUser.email}</p></div></div>
+                        <button onclick="doLogout()" class="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition-colors flex items-center justify-center gap-2"><i class="fas fa-sign-out-alt"></i>Cerrar Sesión</button>
+                    </div>
+                </aside>
+                <main class="flex-1 overflow-y-auto bg-gray-50">
+                    <header class="bg-white shadow-sm px-6 py-3 flex items-center justify-between sticky top-0 z-10 no-print">
+                        <h1 class="text-lg font-bold text-gray-800">${viewTitle()}</h1>
+                        <div class="flex items-center gap-3">
+                            <button onclick="nav('notifications')" class="relative p-2 text-gray-500 hover:text-blue-600 transition-colors"><i class="fas fa-bell"></i>${S.notifications.filter(n => !n.read).length > 0 ? `<span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center">${S.notifications.filter(n => !n.read).length}</span>` : ''}</button>
+                            <span class="text-xs text-gray-400">${new Date().toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}</span>
+                        </div>
+                    </header>
+                    <div class="p-6 fade-in">${getView()}</div>
+                </main>
+            </div>
+        `;
+    }
+
+    function roleLabel() { return { admin:'Administrador', teacher:'Profesor', student:'Estudiante', psychology:'Psicología', tech:'Tecnología', registro:'Depto. de Registro' }[S.userType] || ''; }
+    function viewTitle() { const t = { dashboard:'Panel Principal', studentRegister:'Registro de Estudiantes', fichaEstudiante:'Ficha del Estudiante', allGrades:'Calificaciones', myGrades:'Mis Calificaciones', studentReport:'Informe del Estudiante', printReport:'Imprimir Reportes', students:'Lista de Estudiantes', teachers:'Profesores', subjects:'Materias', courses:'Cursos', attendance:'Pase de Lista', mySubjects: S.userType === 'teacher' ? 'Mis Materias' : 'Mis Materias', enrolledStudents:'Estudiantes Inscritos', manageGrades:'Gestionar Calificaciones', manageNotes:'Notas', lowPerformers:'Bajo Rendimiento', gradeReport:'Informe de Calificaciones', studentNotes:'Notas de Profesores', alerts:'Alertas', techUsers:'Gestión de Usuarios', techSupport:'Soporte', notifications:'Notificaciones', myAttendance:'Mi Asistencia' }; return t[S.currentView] || 'Panel'; }
+
+    function getSidebar() {
+        const unread = S.notifications.filter(n => !n.read).length || null;
+        const pending = S.techSupport.filter(t => t.status === 'pending').length || null;
+        if (S.userType === 'registro') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Panel' },
+            { view:'studentRegister', icon:'fas fa-user-plus', label:'Registro de Estudiantes' },
+            { view:'students', icon:'fas fa-users', label:'Estudiantes Registrados' },
+            { view:'fichaEstudiante', icon:'fas fa-id-card', label:'Ficha del Estudiante' },
+            { view:'studentReport', icon:'fas fa-file-alt', label:'Informes por Estudiante' },
+            { view:'printReport', icon:'fas fa-print', label:'Imprimir Reportes' },
+        ];
+        if (S.userType === 'tech') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Panel de Control' },
+            { view:'techUsers', icon:'fas fa-users-cog', label:'Gestión de Usuarios' },
+            { view:'students', icon:'fas fa-user-graduate', label:'Estudiantes' },
+            { view:'teachers', icon:'fas fa-chalkboard-teacher', label:'Profesores' },
+            { view:'subjects', icon:'fas fa-book', label:'Materias' },
+            { view:'courses', icon:'fas fa-layer-group', label:'Cursos' },
+            { view:'allGrades', icon:'fas fa-clipboard-list', label:'Calificaciones' },
+            { view:'printReport', icon:'fas fa-print', label:'Imprimir Reportes' },
+            { view:'notifications', icon:'fas fa-bell', label:'Notificaciones', badge: unread },
+            { view:'techSupport', icon:'fas fa-headset', label:'Soporte', badge: pending },
+        ];
+        if (S.userType === 'admin') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Panel Principal' },
+            { view:'students', icon:'fas fa-user-graduate', label:'Estudiantes' },
+            { view:'teachers', icon:'fas fa-chalkboard-teacher', label:'Profesores' },
+            { view:'subjects', icon:'fas fa-book', label:'Materias' },
+            { view:'courses', icon:'fas fa-layer-group', label:'Cursos' },
+            { view:'allGrades', icon:'fas fa-clipboard-list', label:'Calificaciones' },
+            { view:'printReport', icon:'fas fa-print', label:'Imprimir Reportes' },
+            { view:'notifications', icon:'fas fa-bell', label:'Notificaciones', badge: unread },
+        ];
+        if (S.userType === 'teacher') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Panel Principal' },
+            { view:'mySubjects', icon:'fas fa-book', label:'Mis Materias' },
+            { view:'enrolledStudents', icon:'fas fa-users', label:'Estudiantes Inscritos' },
+            { view:'attendance', icon:'fas fa-clipboard-check', label:'Pase de Lista' },
+            { view:'manageGrades', icon:'fas fa-edit', label:'Gestionar Calificaciones' },
+            { view:'manageNotes', icon:'fas fa-sticky-note', label:'Notas' },
+            { view:'lowPerformers', icon:'fas fa-exclamation-triangle', label:'Bajo Rendimiento' },
+        ];
+        if (S.userType === 'student') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Mi Panel' },
+            { view:'myGrades', icon:'fas fa-clipboard-list', label:'Mis Calificaciones' },
+            { view:'mySubjects', icon:'fas fa-book', label:'Mis Materias' },
+            { view:'myAttendance', icon:'fas fa-clipboard-check', label:'Mi Asistencia' },
+        ];
+        if (S.userType === 'psychology') return [
+            { view:'dashboard', icon:'fas fa-chart-pie', label:'Panel Principal' },
+            { view:'gradeReport', icon:'fas fa-chart-bar', label:'Informe de Calificaciones' },
+            { view:'studentNotes', icon:'fas fa-sticky-note', label:'Notas de Profesores' },
+            { view:'alerts', icon:'fas fa-exclamation-triangle', label:'Alertas' },
+        ];
+    }
+
+    function nav(v) { S.currentView = v; load(); renderApp(); }
+    function doLogout() { S.currentUser = null; S.userType = null; S.currentView = 'dashboard'; renderLogin(); }
+    function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+
+    function getView() {
+        const views = {
+            dashboard: renderDashboard, studentRegister: renderStudentRegister,
+            fichaEstudiante: renderFichaEstudiante, allGrades: renderAllGrades,
+            myGrades: renderMyGrades, studentReport: renderStudentReport,
+            printReport: renderPrintReport, students: renderStudents,
+            teachers: renderTeachers, subjects: renderSubjects, courses: renderCourses,
+            attendance: renderAttendance, mySubjects: S.userType === 'teacher' ? renderMySubjects : renderStudentSubjects,
+            enrolledStudents: renderEnrolledStudents, manageGrades: renderManageGrades,
+            manageNotes: renderManageNotes, lowPerformers: renderLowPerformers,
+            gradeReport: renderGradeReport, studentNotes: renderStudentNotes,
+            alerts: renderAlerts, techUsers: renderTechUsers, techSupport: renderTechSupport,
+            notifications: renderNotifications, myAttendance: renderMyAttendance,
+        };
+        return (views[S.currentView] || (() => '<p class="text-gray-500">Vista no encontrada</p>'))();
+    }
+
+    function statCard(label, value, icon, colorClass) {
+        return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center justify-between"><div><p class="text-xs text-gray-500 mb-1">${label}</p><p class="text-xl font-bold text-gray-800">${value}</p></div><div class="w-10 h-10 ${colorClass} rounded-lg flex items-center justify-center"><i class="${icon}"></i></div></div></div>`;
+    }
+
+    // ==================== DASHBOARD ====================
+    function renderDashboard() {
+        if (S.userType === 'registro') {
+            return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">${statCard('Estudiantes', S.students.length, 'fas fa-user-graduate', 'bg-green-100 text-green-600')}${statCard('Cursos', S.courses.length, 'fas fa-layer-group', 'bg-blue-100 text-blue-600')}${statCard('Registros Hoy', S.students.filter(s => s.fechaRegistro === today()).length, 'fas fa-calendar-day', 'bg-purple-100 text-purple-600')}${statCard('Activos', S.students.filter(s => s.estado === 'Activo').length, 'fas fa-check-circle', 'bg-emerald-100 text-emerald-600')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-user-plus mr-2 text-green-500"></i>Últimos Registros</h3>${S.students.slice(-5).reverse().map(s => `<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2" onclick="viewFicha('${s.id}')" style="cursor:pointer"><div class="flex items-center gap-3">${s.foto ? `<img src="${s.foto}" class="w-9 h-9 rounded-full object-cover">` : `<div class="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-green-600 text-sm"></i></div>`}<div><p class="text-sm font-medium">${s.nombre}</p><p class="text-xs text-gray-500">${s.curso} | ${s.grado}</p></div></div><span class="text-xs text-gray-400">${fmtDate(s.fechaRegistro)}</span></div>`).join('')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-layer-group mr-2 text-blue-500"></i>Estudiantes por Curso</h3>${S.courses.map(c => { const cnt = S.students.filter(s => s.curso === c).length; const pct = S.students.length > 0 ? (cnt/S.students.length*100).toFixed(0) : 0; return `<div class="mb-3"><div class="flex justify-between mb-1"><span class="text-sm font-medium">${c}</span><span class="text-sm text-gray-500">${cnt} (${pct}%)</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-green-500 h-2.5 rounded-full" style="width:${pct}%"></div></div></div>`; }).join('')}</div></div><div class="mt-6 bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-bolt mr-2 text-yellow-500"></i>Accesos Rápidos</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><div onclick="nav('studentRegister')" class="p-4 bg-green-50 rounded-lg text-center cursor-pointer hover:bg-green-100"><i class="fas fa-user-plus text-green-600 text-2xl mb-2"></i><p class="text-xs font-medium">Nuevo Registro</p></div><div onclick="nav('students')" class="p-4 bg-blue-50 rounded-lg text-center cursor-pointer hover:bg-blue-100"><i class="fas fa-users text-blue-600 text-2xl mb-2"></i><p class="text-xs font-medium">Ver Estudiantes</p></div><div onclick="nav('studentReport')" class="p-4 bg-purple-50 rounded-lg text-center cursor-pointer hover:bg-purple-100"><i class="fas fa-file-alt text-purple-600 text-2xl mb-2"></i><p class="text-xs font-medium">Generar Informe</p></div><div onclick="nav('printReport')" class="p-4 bg-orange-50 rounded-lg text-center cursor-pointer hover:bg-orange-100"><i class="fas fa-print text-orange-600 text-2xl mb-2"></i><p class="text-xs font-medium">Imprimir</p></div></div></div>`;
+        }
+        if (S.userType === 'tech') {
+            return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">${statCard('Estudiantes', S.students.length, 'fas fa-user-graduate', 'bg-blue-100 text-blue-600')}${statCard('Profesores', S.teachers.length, 'fas fa-chalkboard-teacher', 'bg-green-100 text-green-600')}${statCard('Usuarios', S.users.length, 'fas fa-users-cog', 'bg-purple-100 text-purple-600')}${statCard('Soportes Pendientes', S.techSupport.filter(t => t.status==='pending').length, 'fas fa-headset', 'bg-orange-100 text-orange-600')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-shield-alt mr-2 text-purple-500"></i>Control Total del Sistema</h3><p class="text-sm text-gray-600 mb-4">Acceso completo a todas las funciones.</p><div class="grid grid-cols-2 md:grid-cols-4 gap-3"><div onclick="nav('techUsers')" class="p-4 bg-purple-50 rounded-lg text-center cursor-pointer hover:bg-purple-100"><i class="fas fa-users-cog text-purple-600 text-xl mb-2"></i><p class="text-xs font-medium">Usuarios</p></div><div onclick="nav('students')" class="p-4 bg-blue-50 rounded-lg text-center cursor-pointer hover:bg-blue-100"><i class="fas fa-user-graduate text-blue-600 text-xl mb-2"></i><p class="text-xs font-medium">Estudiantes</p></div><div onclick="nav('printReport')" class="p-4 bg-orange-50 rounded-lg text-center cursor-pointer hover:bg-orange-100"><i class="fas fa-print text-orange-600 text-xl mb-2"></i><p class="text-xs font-medium">Imprimir</p></div><div onclick="nav('techSupport')" class="p-4 bg-green-50 rounded-lg text-center cursor-pointer hover:bg-green-100"><i class="fas fa-headset text-green-600 text-xl mb-2"></i><p class="text-xs font-medium">Soporte</p></div></div></div>`;
+        }
+        if (S.userType === 'admin') {
+            return `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">${statCard('Estudiantes', S.students.length, 'fas fa-user-graduate', 'bg-blue-100 text-blue-600')}${statCard('Profesores', S.teachers.length, 'fas fa-chalkboard-teacher', 'bg-green-100 text-green-600')}${statCard('Materias', S.subjects.length, 'fas fa-book', 'bg-purple-100 text-purple-600')}${statCard('Calificaciones', S.grades.length, 'fas fa-clipboard-list', 'bg-orange-100 text-orange-600')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-users mr-2 text-blue-500"></i>Últimos Registros</h3>${S.students.slice(-5).reverse().map(s => `<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2"><div class="flex items-center gap-3"><div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-xs text-blue-600"></i></div><div><p class="text-sm font-medium">${s.nombre}</p><p class="text-xs text-gray-500">${s.curso}</p></div></div><span class="text-xs text-gray-400">${fmtDate(s.fechaRegistro)}</span></div>`).join('')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-exclamation-triangle mr-2 text-orange-500"></i>Bajo Rendimiento</h3>${renderLowList()}</div></div>`;
+        }
+        if (S.userType === 'teacher') {
+            const myS = S.subjects.filter(s => s.profesorId === S.currentUser.id);
+            const myG = S.grades.filter(g => g.profesorId === S.currentUser.id);
+            return `<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">${statCard('Mis Materias', myS.length, 'fas fa-book', 'bg-blue-100 text-blue-600')}${statCard('Calificaciones', myG.length, 'fas fa-clipboard-list', 'bg-green-100 text-green-600')}${statCard('Estudiantes', [...new Set(myG.map(g => g.estudianteId))].length, 'fas fa-users', 'bg-purple-100 text-purple-600')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-book mr-2 text-blue-500"></i>Mis Materias</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${myS.map(sub => { const gs = myG.filter(g => g.materiaId === sub.id); const avg = gs.length > 0 ? (gs.reduce((a,b) => a+b.calificacion,0)/gs.length).toFixed(1) : '-'; return `<div class="border rounded-lg p-4 card-hover"><div class="flex items-center justify-between mb-2"><h4 class="font-semibold text-gray-800">${sub.nombre}</h4><span class="badge bg-blue-100 text-blue-700">${sub.curso}</span></div><div class="text-xs text-gray-500 space-y-1"><p><i class="fas fa-users mr-1"></i>${gs.length} calificaciones</p><p><i class="fas fa-chart-line mr-1"></i>Prom: ${avg}</p></div></div>`; }).join('') || '<p class="text-gray-400 col-span-3 text-center py-8">Sin materias asignadas</p>'}</div></div>`;
+        }
+        if (S.userType === 'student') {
+            const myG = S.grades.filter(g => g.estudianteId === S.currentUser.id);
+            const avg = myG.length > 0 ? (myG.reduce((a,b) => a+b.calificacion,0)/myG.length).toFixed(1) : '-';
+            return `<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">${statCard('Materias', [...new Set(myG.map(g => g.materiaId))].length, 'fas fa-book', 'bg-blue-100 text-blue-600')}${statCard('Calificaciones', myG.length, 'fas fa-clipboard-list', 'bg-green-100 text-green-600')}${statCard('Promedio', avg, 'fas fa-chart-line', avg >= 70 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-chart-bar mr-2 text-blue-500"></i>Mis Calificaciones</h3>${['P1','P2','P3','P4'].map(p => { const pg = myG.filter(g => g.periodo === p); if (!pg.length) return ''; return `<div class="mb-4"><h4 class="text-sm font-semibold text-gray-600 mb-2">${p}</h4><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">${pg.map(g => `<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><span class="text-sm font-medium">${gSub(g.materiaId)}</span><span class="badge ${gClr(g.calificacion)} font-bold">${g.calificacion}</span></div>`).join('')}</div></div>`; }).join('') || '<p class="text-gray-400 text-center py-4">Sin calificaciones</p>'}</div>`;
+        }
+        if (S.userType === 'psychology') {
+            const low = S.grades.filter(g => g.calificacion < 70);
+            const lowS = [...new Set(low.map(g => g.estudianteId))];
+            return `<div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">${statCard('Estudiantes', S.students.length, 'fas fa-user-graduate', 'bg-blue-100 text-blue-600')}${statCard('Calif. < 70', low.length, 'fas fa-exclamation-circle', 'bg-red-100 text-red-600')}${statCard('En Alerta', lowS.length, 'fas fa-exclamation-triangle', 'bg-orange-100 text-orange-600')}${statCard('Notas', S.notes.length, 'fas fa-sticky-note', 'bg-green-100 text-green-600')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-exclamation-triangle mr-2 text-orange-500"></i>Estudiantes en Alerta</h3>${lowS.map(sid => { const st = gStu(sid); const sg = low.filter(g => g.estudianteId === sid); const mn = Math.min(...sg.map(g => g.calificacion)); return `<div class="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg mb-2"><div class="flex items-center gap-3"><div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-xs text-red-600"></i></div><div><p class="text-sm font-medium">${st.nombre}</p><p class="text-xs text-gray-500">${st.curso} | 📞 ${st.telefono || ''}</p></div></div><span class="badge bg-red-200 text-red-700">Mín: ${mn}</span></div>`; }).join('') || '<p class="text-gray-400 text-center py-4">Sin alertas</p>'}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-sticky-note mr-2 text-green-500"></i>Últimas Notas</h3>${S.notes.slice(-5).reverse().map(n => { const st = gStu(n.estudianteId); const tc = gTch(n.profesorId); return `<div class="p-3 bg-gray-50 rounded-lg mb-2"><div class="flex items-center gap-2 mb-1"><span class="text-sm font-medium">${tc.nombre}</span><span class="text-xs text-gray-400">→ ${st.nombre}</span></div><p class="text-sm text-gray-600 line-clamp-2">${n.contenido}</p><p class="text-xs text-gray-400 mt-1">${fmtDT(n.fecha, n.hora)}</p></div>`; }).join('') || '<p class="text-gray-400 text-center py-4">Sin notas</p>'}</div></div>`;
+        }
+    }
+
+    function renderLowList() {
+        const low = S.grades.filter(g => g.calificacion < 70);
+        const uq = [...new Set(low.map(g => g.estudianteId))];
+        if (!uq.length) return '<p class="text-gray-400 text-center py-4">Sin alertas</p>';
+        return uq.slice(0, 5).map(sid => { const st = gStu(sid); const sg = low.filter(g => g.estudianteId === sid); const avg = (sg.reduce((a,b) => a+b.calificacion,0)/sg.length).toFixed(1); return `<div class="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg mb-2"><div class="flex items-center gap-3"><div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-xs text-red-600"></i></div><div><p class="text-sm font-medium">${st.nombre}</p><p class="text-xs text-gray-500">${st.curso} | 📞 ${st.telefono || 'N/A'}</p></div></div><span class="badge bg-red-200 text-red-700">Prom: ${avg}</span></div>`; }).join('');
+    }
+
+    // ==================== REGISTRO ====================
+    function renderStudentRegister() {
+        return `
+            <div class="mb-6"><h2 class="text-lg font-semibold text-gray-800 mb-1"><i class="fas fa-user-plus mr-2 text-green-500"></i>Registro de Estudiantes - Ficha de Inscripción</h2><p class="text-sm text-gray-500">Complete todos los campos requeridos</p></div>
+            <form onsubmit="saveNewStudent(event)" class="space-y-6">
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-id-card text-green-500"></i>Datos Personales</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-1 flex flex-col items-center">
+                            <div id="photoPreview" class="photo-upload w-40 h-40 rounded-full flex items-center justify-center overflow-hidden bg-gray-100 mb-3" onclick="document.getElementById('photoInput').click()">
+                                <img id="photoImg" class="w-full h-full object-cover hidden"><div id="photoPlaceholder" class="text-center"><i class="fas fa-camera text-3xl text-gray-400 mb-2"></i><p class="text-xs text-gray-500">Click para subir foto</p></div>
+                            </div>
+                            <input type="file" id="photoInput" accept="image/*" onchange="previewPhoto(event)" class="hidden"><input type="hidden" id="photoData">
+                            <p class="text-xs text-gray-400">Foto tipo carnet</p>
+                        </div>
+                        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo *</label><input type="text" id="regNombre" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Cédula / Identificación</label><input type="text" id="regCedula" placeholder="001-0000000-0" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento *</label><input type="date" id="regFechaNac" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Nacimiento</label><input type="text" id="regLugarNac" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Sexo *</label><select id="regSexo" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option value="">Seleccionar</option><option>Masculino</option><option>Femenino</option></select></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Sangre</label><select id="regSangre" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option value="">Seleccionar</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+                            <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Dirección Completa</label><input type="text" id="regDireccion" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-graduation-cap text-blue-500"></i>Información Académica</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Grado *</label><select id="regGrado" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option value="">Seleccionar</option><option>Primaria</option><option>Secundaria</option><option>Bachillerato</option></select></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Curso / Sección *</label><select id="regCurso" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none">${S.courses.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Escuela de Procedencia</label><input type="text" id="regEscuela" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Ingreso</label><input type="date" id="regFechaReg" value="${today()}" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-phone-alt text-orange-500"></i>Contacto</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono del Estudiante *</label><input type="tel" id="regTelefono" required placeholder="809-555-0000" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico *</label><input type="email" id="regEmail" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Contraseña de Acceso *</label><input type="password" id="regPassword" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-users text-purple-500"></i>Padres / Tutores</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Padre</label><input type="text" id="regPadre" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono del Padre</label><input type="tel" id="regTelPadre" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Madre *</label><input type="text" id="regMadre" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono de Emergencia *</label><input type="tel" id="regTelEmergencia" required class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-heartbeat text-red-500"></i>Salud</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Condición Médica</label><input type="text" id="regCondicion" placeholder="Ninguna" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-1">Seguro Médico</label><input type="text" id="regSeguro" placeholder="ARS" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Contacto de Emergencia</label><input type="text" id="regContactoEmergencia" placeholder="Nombre y parentesco" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-comment-alt text-yellow-500"></i>Observaciones</h3><textarea id="regObservaciones" rows="3" placeholder="Observaciones adicionales..." class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea></div>
+                <div class="flex justify-end gap-3 no-print">
+                    <button type="reset" class="px-6 py-3 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"><i class="fas fa-eraser mr-2"></i>Limpiar</button>
+                    <button type="submit" class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium shadow-lg"><i class="fas fa-save mr-2"></i>Registrar Estudiante</button>
+                </div>
+            </form>
+        `;
+    }
+
+    function previewPhoto(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                document.getElementById('photoImg').src = ev.target.result;
+                document.getElementById('photoImg').classList.remove('hidden');
+                document.getElementById('photoPlaceholder').classList.add('hidden');
+                document.getElementById('photoData').value = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function saveNewStudent(e) {
+        e.preventDefault();
+        const data = {
+            id: genId(), nombre: document.getElementById('regNombre').value, email: document.getElementById('regEmail').value,
+            password: document.getElementById('regPassword').value, curso: document.getElementById('regCurso').value,
+            grado: document.getElementById('regGrado').value, fechaNacimiento: document.getElementById('regFechaNac').value,
+            lugarNacimiento: document.getElementById('regLugarNac').value, telefono: document.getElementById('regTelefono').value,
+            telefonoEmergencia: document.getElementById('regTelEmergencia').value, contactoEmergencia: document.getElementById('regContactoEmergencia').value,
+            direccion: document.getElementById('regDireccion').value, cedula: document.getElementById('regCedula').value,
+            foto: document.getElementById('photoData').value || '', fechaRegistro: document.getElementById('regFechaReg').value || today(),
+            horaRegistro: nowTime(), estado: 'Activo', sexo: document.getElementById('regSexo').value,
+            tipoSangre: document.getElementById('regSangre').value, nombrePadre: document.getElementById('regPadre').value,
+            nombreMadre: document.getElementById('regMadre').value, telefonoPadre: document.getElementById('regTelPadre').value,
+            escuelaProcedencia: document.getElementById('regEscuela').value, condicionMedica: document.getElementById('regCondicion').value,
+            seguroMedico: document.getElementById('regSeguro').value, observaciones: document.getElementById('regObservaciones').value,
+        };
+        S.students.push(data);
+        S.notifications.push({ id: genId(), message: `✅ Nuevo estudiante registrado: ${data.nombre} en ${data.curso}`, date: today(), hora: nowTime(), read: false, type: 'new_student' });
+        save();
+        notify(`Estudiante ${data.nombre} registrado en ${data.curso}`, 'success');
+        nav('fichaEstudiante');
+        setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = data.id; showFicha(); } }, 200);
+    }
+
+    // ==================== FICHA ====================
+    function viewFicha(id) { nav('fichaEstudiante'); setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = id; showFicha(); } }, 200); }
+
+    function renderFichaEstudiante() {
+        return `<div class="mb-6 flex flex-wrap items-center justify-between gap-4"><h2 class="text-lg font-semibold text-gray-800"><i class="fas fa-id-card mr-2 text-green-500"></i>Ficha del Estudiante</h2><div class="flex items-center gap-3"><select id="fichaStudentSelect" onchange="showFicha()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option value="">Seleccionar estudiante</option>${S.students.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select><button onclick="printFicha()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-print mr-1"></i>Imprimir</button></div></div><div id="fichaContent"><div class="text-center text-gray-400 py-12"><i class="fas fa-user-circle text-6xl mb-4"></i><p class="text-lg">Seleccione un estudiante</p></div></div>`;
+    }
+
+    function showFicha() {
+        const id = document.getElementById('fichaStudentSelect')?.value;
+        if (!id) return;
+        const s = gStu(id);
+        const myG = S.grades.filter(g => g.estudianteId === id);
+        const myN = S.notes.filter(n => n.estudianteId === id);
+        const avg = myG.length > 0 ? (myG.reduce((a,b) => a+b.calificacion,0)/myG.length).toFixed(1) : '-';
+
+        document.getElementById('fichaContent').innerHTML = `
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="flex-shrink-0">${s.foto ? `<img src="${s.foto}" class="w-32 h-32 rounded-full object-cover border-4 border-green-200">` : `<div class="w-32 h-32 rounded-full bg-green-100 flex items-center justify-center border-4 border-green-200"><i class="fas fa-user text-4xl text-green-400"></i></div>`}</div>
+                    <div class="flex-1 text-center md:text-left"><h2 class="text-2xl font-bold text-gray-800">${s.nombre}</h2><p class="text-gray-500">Cédula: ${s.cedula || 'N/A'}</p><div class="flex flex-wrap gap-2 mt-3 justify-center md:justify-start"><span class="badge bg-blue-100 text-blue-700 px-3 py-1">${s.curso}</span><span class="badge bg-purple-100 text-purple-700 px-3 py-1">${s.grado}</span><span class="badge ${s.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'} px-3 py-1">${s.estado}</span></div></div>
+                    <div class="text-center md:text-right"><p class="text-sm text-gray-500">Registrado:</p><p class="font-semibold">${fmtDT(s.fechaRegistro, s.horaRegistro)}</p></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-id-card text-green-500"></i>Datos Personales</h3>
+                    <div class="space-y-3 text-sm">${fR('Fecha Nacimiento', s.fechaNacimiento ? fmtDate(s.fechaNacimiento) : '-')}${fR('Lugar', s.lugarNacimiento || '-')}${fR('Sexo', s.sexo || '-')}${fR('Tipo Sangre', s.tipoSangre || '-')}${fR('Dirección', s.direccion || '-')}${fR('Cédula', s.cedula || '-')}</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-graduation-cap text-blue-500"></i>Académica</h3>
+                    <div class="space-y-3 text-sm">${fR('Grado', s.grado || '-')}${fR('Curso', s.curso || '-')}${fR('Escuela Procedencia', s.escuelaProcedencia || '-')}${fR('Fecha Ingreso', fmtDT(s.fechaRegistro, s.horaRegistro))}${fR('Estado', s.estado || '-')}${fR('Promedio General', avg)}</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-phone-alt text-orange-500"></i>Contactos</h3>
+                    <div class="space-y-3 text-sm">${fR('Teléfono', '📞 ' + (s.telefono || '-'))}${fR('Email', s.email || '-')}${fR('Tel. Emergencia', '📞 ' + (s.telefonoEmergencia || '-'))}${fR('Contacto Emergencia', s.contactoEmergencia || '-')}</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-users text-purple-500"></i>Padres / Tutores</h3>
+                    <div class="space-y-3 text-sm">${fR('Padre', s.nombrePadre || '-')}${fR('Tel. Padre', '📞 ' + (s.telefonoPadre || '-'))}${fR('Madre', s.nombreMadre || '-')}</div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-heartbeat text-red-500"></i>Salud</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">${fR('Tipo Sangre', s.tipoSangre || '-')}${fR('Condición Médica', s.condicionMedica || 'Ninguna')}${fR('Seguro Médico', s.seguroMedico || '-')}</div>
+                ${s.observaciones ? `<div class="mt-4"><p class="text-sm font-medium text-gray-700 mb-1">Observaciones:</p><p class="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">${s.observaciones}</p></div>` : ''}
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center justify-between"><span><i class="fas fa-clipboard-list mr-2 text-blue-500"></i>Calificaciones</span><span class="text-sm font-normal">Prom: <strong class="${avg >= 70 ? 'text-green-600' : 'text-red-600'}">${avg}</strong></span></h3>
+                ${myG.length > 0 ? `<table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Fecha/Hora</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Materia</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Período</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Profesor</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Calif.</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th></tr></thead><tbody>${myG.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(g => `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 text-sm">${fmtDT(g.fecha, g.hora)}</td><td class="px-4 py-2 text-sm font-medium">${gSub(g.materiaId)}</td><td class="px-4 py-2 text-sm">${g.periodo}</td><td class="px-4 py-2 text-sm">${gTch(g.profesorId).nombre}</td><td class="px-4 py-2"><span class="badge ${gClr(g.calificacion)} font-bold">${g.calificacion}</span></td><td class="px-4 py-2"><span class="badge ${gBadge(g.calificacion)}">${g.calificacion >= 70 ? 'Aprobado' : 'Reprobado'}</span></td></tr>`).join('')}</tbody></table>` : '<p class="text-gray-400 text-center py-4">Sin calificaciones</p>'}
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-sticky-note mr-2 text-green-500"></i>Notas de Profesores</h3>
+                ${myN.length > 0 ? `<div class="space-y-3">${myN.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(n => `<div class="p-4 bg-gray-50 rounded-lg"><div class="flex items-center justify-between mb-2"><span class="text-sm font-medium">${gTch(n.profesorId).nombre}</span><span class="text-xs text-gray-400">${fmtDT(n.fecha, n.hora)}</span></div><p class="text-sm text-gray-700">${n.contenido}</p></div>`).join('')}</div>` : '<p class="text-gray-400 text-center py-4">Sin notas</p>'}
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><i class="fas fa-clipboard-check mr-2 text-indigo-500"></i>Asistencia</h3>${renderStuAtt(id)}</div>
+            <div class="mt-6 flex justify-end gap-3 no-print">
+                <button onclick="nav('studentReport'); setTimeout(()=>{const el=document.getElementById('srStudent'); if(el){el.value='${id}'; showStuReport();}},200)" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg text-sm font-medium"><i class="fas fa-file-alt mr-2"></i>Generar Informe</button>
+                <button onclick="printFicha()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium"><i class="fas fa-print mr-2"></i>Imprimir</button>
+            </div>
+        `;
+    }
+
+    function fR(label, value) { return `<div class="flex justify-between py-2 border-b border-gray-100"><span class="text-gray-500">${label}:</span><span class="font-medium text-gray-800">${value}</span></div>`; }
+
+    function renderStuAtt(studentId) {
+        const records = [];
+        Object.keys(S.attendance).forEach(key => {
+            if (S.attendance[key][studentId]) { const date = key.split('_')[0]; const course = key.split('_').slice(1).join('_'); records.push({ date, course, ...S.attendance[key][studentId] }); }
+        });
+        records.sort((a,b) => b.date.localeCompare(a.date));
+        if (!records.length) return '<p class="text-gray-400 text-center py-4">Sin registros</p>';
+        const present = records.filter(r => r.status === 'present').length;
+        const absent = records.filter(r => r.status === 'absent').length;
+        const late = records.filter(r => r.status === 'late').length;
+        return `<div class="grid grid-cols-3 gap-4 mb-4"><div class="bg-green-50 p-3 rounded-lg text-center"><p class="text-2xl font-bold text-green-600">${present}</p><p class="text-xs text-gray-500">Presente</p></div><div class="bg-red-50 p-3 rounded-lg text-center"><p class="text-2xl font-bold text-red-600">${absent}</p><p class="text-xs text-gray-500">Ausente</p></div><div class="bg-yellow-50 p-3 rounded-lg text-center"><p class="text-2xl font-bold text-yellow-600">${late}</p><p class="text-xs text-gray-500">Tardanza</p></div></div><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Fecha</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Curso</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Obs.</th></tr></thead><tbody>${records.map(r => `<tr class="border-b"><td class="px-4 py-2 text-sm">${fmtDate(r.date)}</td><td class="px-4 py-2 text-sm">${r.course}</td><td class="px-4 py-2"><span class="badge ${r.status === 'present' ? 'bg-green-100 text-green-700' : r.status === 'absent' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Ausente' : 'Tardanza'}</span></td><td class="px-4 py-2 text-sm text-gray-600">${r.obs || '-'}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function printFicha() {
+        const content = document.getElementById('fichaContent');
+        if (!content || content.querySelector('.text-center.text-gray-400')) { notify('Seleccione un estudiante', 'warning'); return; }
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Ficha del Estudiante</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333}.header{text-align:center;border-bottom:2px solid #10b981;padding-bottom:15px;margin-bottom:20px}.header h1{margin:0;color:#10b981}.section{margin-bottom:20px;border:1px solid #e5e7eb;border-radius:8px;padding:15px}.section h3{color:#10b981;margin-top:0;border-bottom:1px solid #e5e7eb;padding-bottom:8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;font-size:12px}th{background:#f9fafb}.field{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #e5e7eb}.badge{padding:2px 8px;border-radius:12px;font-size:11px}.bg-green-100{background:#dcfce7;color:#166534}.bg-red-100{background:#fee2e2;color:#991b1b}.bg-blue-100{background:#dbeafe;color:#1e40af}.text-green-600{color:#16a34a}.text-red-600{color:#dc2626}.footer{text-align:center;margin-top:30px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px}img.photo{width:100px;height:100px;border-radius:50%;object-fit:cover}</style></head><body><div class="header"><h1>Sistema Escolar Integral</h1><p>Ficha del Estudiante - ${new Date().toLocaleDateString('es-ES')}</p></div>${content.innerHTML}<div class="footer"><p>Generado: ${new Date().toLocaleString('es-ES')} | Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close();
+        setTimeout(() => pw.print(), 500);
+    }
+
+    // ==================== INFORME ====================
+    function renderStudentReport() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800 mb-1"><i class="fas fa-file-alt mr-2 text-purple-500"></i>Generar Informe por Estudiante</h2><p class="text-sm text-gray-500">Seleccione estudiante y filtros de fecha</p></div><div class="bg-white rounded-xl shadow-sm p-6 mb-6"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end"><div><label class="block text-sm font-medium text-gray-700 mb-1">Estudiante *</label><select id="srStudent" onchange="showStuReport()" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"><option value="">Seleccionar</option>${S.students.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Desde</label><input type="date" id="srDesde" onchange="showStuReport()" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Hasta</label><input type="date" id="srHasta" onchange="showStuReport()" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Período</label><select id="srPeriodo" onchange="showStuReport()" class="w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"><option value="">Todos</option>${S.periods.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div><button onclick="printStuReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium"><i class="fas fa-print mr-1"></i>Imprimir</button></div></div><div id="reportContent"><div class="text-center text-gray-400 py-12"><i class="fas fa-file-alt text-6xl mb-4"></i><p class="text-lg">Seleccione un estudiante</p></div></div>`;
+    }
+
+    function showStuReport() {
+        const id = document.getElementById('srStudent')?.value;
+        if (!id) return;
+        const s = gStu(id);
+        const desde = document.getElementById('srDesde')?.value || '';
+        const hasta = document.getElementById('srHasta')?.value || '';
+        const periodo = document.getElementById('srPeriodo')?.value || '';
+        let myG = S.grades.filter(g => g.estudianteId === id);
+        if (desde) myG = myG.filter(g => g.fecha >= desde);
+        if (hasta) myG = myG.filter(g => g.fecha <= hasta);
+        if (periodo) myG = myG.filter(g => g.periodo === periodo);
+        let myN = S.notes.filter(n => n.estudianteId === id);
+        if (desde) myN = myN.filter(n => n.fecha >= desde);
+        if (hasta) myN = myN.filter(n => n.fecha <= hasta);
+        const avg = myG.length > 0 ? (myG.reduce((a,b) => a+b.calificacion,0)/myG.length).toFixed(1) : '-';
+        const passed = myG.filter(g => g.calificacion >= 70).length;
+        const failed = myG.filter(g => g.calificacion < 70).length;
+
+        document.getElementById('reportContent').innerHTML = `
+            <div id="printableReport">
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border-t-4 border-purple-500"><div class="flex items-center justify-between"><div><h2 class="text-xl font-bold text-gray-800">Informe Académico del Estudiante</h2><p class="text-sm text-gray-500">Generado: ${new Date().toLocaleString('es-ES')}</p>${desde || hasta ? `<p class="text-xs text-gray-400">Período: ${desde ? fmtDate(desde) : 'Inicio'} - ${hasta ? fmtDate(hasta) : 'Actual'}</p>` : ''}</div>${s.foto ? `<img src="${s.foto}" class="w-20 h-20 rounded-full object-cover">` : `<div class="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center"><i class="fas fa-user text-2xl text-purple-400"></i></div>`}</div></div>
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b"><i class="fas fa-user mr-2 text-purple-500"></i>Resumen</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">${fR('Nombre', s.nombre)}${fR('Cédula', s.cedula || '-')}${fR('Curso', s.curso)}${fR('Grado', s.grado)}${fR('Teléfono', '📞 ' + (s.telefono || '-'))}${fR('Email', s.email || '-')}${fR('Fecha Nac.', s.fechaNacimiento ? fmtDate(s.fechaNacimiento) : '-')}${fR('Sexo', s.sexo || '-')}</div></div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"><div class="bg-white rounded-xl shadow-sm p-5 text-center"><p class="text-3xl font-bold ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : 'text-gray-400'}">${avg}</p><p class="text-xs text-gray-500 mt-1">Promedio</p></div><div class="bg-white rounded-xl shadow-sm p-5 text-center"><p class="text-3xl font-bold text-blue-600">${myG.length}</p><p class="text-xs text-gray-500 mt-1">Calificaciones</p></div><div class="bg-white rounded-xl shadow-sm p-5 text-center"><p class="text-3xl font-bold text-green-600">${passed}</p><p class="text-xs text-gray-500 mt-1">Aprobadas</p></div><div class="bg-white rounded-xl shadow-sm p-5 text-center"><p class="text-3xl font-bold text-red-600">${failed}</p><p class="text-xs text-gray-500 mt-1">Reprobadas</p></div></div>
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b"><i class="fas fa-clipboard-list mr-2 text-blue-500"></i>Calificaciones</h3>${myG.length > 0 ? `<table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Fecha</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Hora</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Materia</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Período</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Profesor</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Calif.</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th></tr></thead><tbody>${myG.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(g => `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 text-sm">${fmtDate(g.fecha)}</td><td class="px-4 py-2 text-sm">${g.hora || '-'}</td><td class="px-4 py-2 text-sm font-medium">${gSub(g.materiaId)}</td><td class="px-4 py-2 text-sm">${g.periodo}</td><td class="px-4 py-2 text-sm">${gTch(g.profesorId).nombre}</td><td class="px-4 py-2"><span class="badge ${gClr(g.calificacion)} font-bold">${g.calificacion}</span></td><td class="px-4 py-2"><span class="badge ${gBadge(g.calificacion)}">${g.calificacion >= 70 ? 'Aprobado' : 'Reprobado'}</span></td></tr>`).join('')}</tbody></table>` : '<p class="text-gray-400 text-center py-4">Sin calificaciones</p>'}</div>
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b"><i class="fas fa-calendar mr-2 text-green-500"></i>Resumen por Período</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">${S.periods.map(p => { const pg = myG.filter(g => g.periodo === p); const pAvg = pg.length > 0 ? (pg.reduce((a,b) => a+b.calificacion,0)/pg.length).toFixed(1) : '-'; return `<div class="border rounded-lg p-4 ${pAvg !== '-' && pAvg >= 70 ? 'border-green-200 bg-green-50' : pAvg !== '-' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}"><p class="text-sm font-semibold text-gray-700 mb-2">${p}</p><p class="text-2xl font-bold ${pAvg >= 70 ? 'text-green-600' : pAvg !== '-' ? 'text-red-600' : 'text-gray-400'}">${pAvg}</p><p class="text-xs text-gray-500 mt-1">${pg.length} calificaciones</p></div>`; }).join('')}</div></div>
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6"><h3 class="font-semibold text-gray-800 mb-4 pb-2 border-b"><i class="fas fa-sticky-note mr-2 text-yellow-500"></i>Notas de Profesores</h3>${myN.length > 0 ? `<div class="space-y-3">${myN.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(n => `<div class="p-4 bg-gray-50 rounded-lg border-l-4 border-yellow-400"><div class="flex items-center justify-between mb-2"><span class="text-sm font-medium">${gTch(n.profesorId).nombre}</span><span class="text-xs text-gray-400">${fmtDT(n.fecha, n.hora)}</span></div><p class="text-sm text-gray-700">${n.contenido}</p></div>`).join('')}</div>` : '<p class="text-gray-400 text-center py-4">Sin notas</p>'}</div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3 no-print"><button onclick="printStuReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium"><i class="fas fa-print mr-2"></i>Imprimir Informe</button></div>
+        `;
+    }
+
+    function printStuReport() {
+        const content = document.getElementById('printableReport');
+        if (!content) { notify('Genere un informe primero', 'warning'); return; }
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Informe del Estudiante</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:12px}h1{text-align:center;color:#7c3aed;border-bottom:2px solid #7c3aed;padding-bottom:10px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #e5e7eb;padding:6px}th{background:#f9fafb;font-size:10px}.field{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #e5e7eb;font-size:11px}.badge{padding:1px 6px;border-radius:10px;font-size:10px}.bg-green-100{background:#dcfce7;color:#166534}.bg-red-100{background:#fee2e2;color:#991b1b}.text-green-600{color:#16a34a}.text-red-600{color:#dc2626}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat-box{text-align:center;padding:10px;border:1px solid #e5e7eb;border-radius:6px}.stat-box .num{font-size:20px;font-weight:bold}.footer{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px}img{width:80px;height:80px;border-radius:50%;object-fit:cover}</style></head><body><h1>Sistema Escolar Integral - Informe Académico</h1><p style="text-align:center">${new Date().toLocaleString('es-ES')}</p>${content.innerHTML}<div class="footer"><p>Generado: ${new Date().toLocaleString('es-ES')} | Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close();
+        setTimeout(() => pw.print(), 500);
+    }
+
+    // ==================== PRINT CENTER ====================
+    function renderPrintReport() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800"><i class="fas fa-print mr-2 text-orange-500"></i>Centro de Impresión</h2><p class="text-sm text-gray-500">Seleccione el tipo de reporte</p></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${pCard('fas fa-id-card','Ficha del Estudiante','Ficha completa con datos personales, académicos y de contacto','green','nav("fichaEstudiante")')}${pCard('fas fa-file-alt','Informe Individual','Informe detallado con calificaciones, asistencia y notas','purple','nav("studentReport")')}${pCard('fas fa-clipboard-list','Lista de Calificaciones','Calificaciones generales por curso y período','blue','printAllGrades()')}${pCard('fas fa-chart-bar','Informe General','Resumen estadístico de toda la escuela','indigo','printGeneral()')}${pCard('fas fa-users','Lista de Estudiantes','Listado completo por curso con contactos','orange','printStuList()')}${pCard('fas fa-exclamation-triangle','Bajo Rendimiento','Estudiantes con calificaciones < 70','red','printLow()')}${pCard('fas fa-clipboard-check','Reporte Asistencia','Registro de asistencia por curso','teal','printAtt()')}${pCard('fas fa-sticky-note','Notas Profesores','Compilado de notas sobre estudiantes','yellow','printNotes()')}${pCard('fas fa-chalkboard-teacher','Directorio Profesores','Lista de profesores con materias y contacto','cyan','printTch()')}</div>`;
+    }
+
+    function pCard(icon, title, desc, color, action) { return `<div onclick="${action}" class="bg-white rounded-xl shadow-sm p-6 card-hover cursor-pointer border-l-4 border-${color}-500"><div class="flex items-start gap-4"><div class="w-12 h-12 bg-${color}-100 rounded-lg flex items-center justify-center flex-shrink-0"><i class="${icon} text-${color}-600 text-lg"></i></div><div><h3 class="font-semibold text-gray-800">${title}</h3><p class="text-sm text-gray-500 mt-1">${desc}</p></div></div></div>`; }
+
+    function printAllGrades() {
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Calificaciones Generales</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#3b82f6;border-bottom:2px solid #3b82f6;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e5e7eb;padding:5px;text-align:left}th{background:#f0f9ff}.bg-green-100{background:#dcfce7;color:#166534}.bg-red-100{background:#fee2e2;color:#991b1b}.badge{padding:1px 5px;border-radius:8px;font-size:10px}.footer{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af}</style></head><body><h1>Sistema Escolar - Calificaciones Generales</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p><table><thead><tr><th>Estudiante</th><th>Curso</th><th>Materia</th><th>Período</th><th>Fecha</th><th>Hora</th><th>Calif.</th><th>Estado</th></tr></thead><tbody>${S.grades.sort((a,b) => a.fecha.localeCompare(b.fecha)).map(g => { const st = gStu(g.estudianteId); return `<tr><td>${st.nombre}</td><td>${st.curso}</td><td>${gSub(g.materiaId)}</td><td>${g.periodo}</td><td>${fmtDate(g.fecha)}</td><td>${g.hora || '-'}</td><td><span class="badge ${gBadge(g.calificacion)}">${g.calificacion}</span></td><td>${g.calificacion >= 70 ? 'Aprobado' : 'Reprobado'}</td></tr>`; }).join('')}</tbody></table><div class="footer"><p>Sistema Escolar Integral v3.0 | ${new Date().toLocaleString('es-ES')}</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printGeneral() {
+        const total = S.grades.length; const avg = total > 0 ? (S.grades.reduce((a,b) => a+b.calificacion,0)/total).toFixed(1) : '-'; const passed = S.grades.filter(g => g.calificacion >= 70).length; const failed = S.grades.filter(g => g.calificacion < 70).length;
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Informe General</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h1{text-align:center;color:#6366f1;border-bottom:2px solid #6366f1;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e5e7eb;padding:6px}th{background:#eef2ff}.stat{display:inline-block;width:22%;text-align:center;padding:15px;margin:1%;border:1px solid #e5e7eb;border-radius:8px}.stat .num{font-size:28px;font-weight:bold}.footer{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af}</style></head><body><h1>Informe General</h1><p style="text-align:center">${new Date().toLocaleString('es-ES')}</p><div style="text-align:center"><div class="stat" style="border-color:#3b82f1"><div class="num" style="color:#3b82f6">${total}</div>Total Calif.</div><div class="stat" style="border-color:#10b981"><div class="num" style="color:#10b981">${avg}</div>Promedio</div><div class="stat" style="border-color:#16a34a"><div class="num" style="color:#16a34a">${passed}</div>Aprobados</div><div class="stat" style="border-color:#dc2626"><div class="num" style="color:#dc2626">${failed}</div>Reprobados</div></div><table><thead><tr><th>Curso</th><th>Estudiantes</th><th>Materias</th><th>Promedio</th></tr></thead><tbody>${S.courses.map(c => { const sts = S.students.filter(s => s.curso === c); const subs = S.subjects.filter(s => s.curso === c); const cG = S.grades.filter(g => subs.some(s => s.id === g.materiaId)); const cAvg = cG.length > 0 ? (cG.reduce((a,b) => a+b.calificacion,0)/cG.length).toFixed(1) : '-'; return `<tr><td>${c}</td><td>${sts.length}</td><td>${subs.length}</td><td>${cAvg}</td></tr>`; }).join('')}</tbody></table><div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printStuList() {
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Lista de Estudiantes</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#f59e0b;border-bottom:2px solid #f59e0b;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #e5e7eb;padding:4px;text-align:left}th{background:#fffbeb}.bg-green-100{background:#dcfce7;color:#166534}.badge{padding:1px 5px;border-radius:8px;font-size:10px}.footer{text-align:center;margin-top:15px;font-size:10px;color:#9ca3af}</style></head><body><h1>Lista de Estudiantes</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p>${S.courses.map(c => { const sts = S.students.filter(s => s.curso === c); return `<h3>${c} (${sts.length} estudiantes)</h3><table><thead><tr><th>#</th><th>Nombre</th><th>Cédula</th><th>Teléfono</th><th>Madre</th><th>Tel. Emerg.</th><th>Estado</th></tr></thead><tbody>${sts.map((s,i) => `<tr><td>${i+1}</td><td>${s.nombre}</td><td>${s.cedula || '-'}</td><td>${s.telefono || '-'}</td><td>${s.nombreMadre || '-'}</td><td>${s.telefonoEmergencia || '-'}</td><td><span class="badge bg-green-100">${s.estado}</span></td></tr>`).join('')}</tbody></table><br>`; }).join('')}<div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printLow() {
+        const low = S.grades.filter(g => g.calificacion < 70); const map = {}; low.forEach(g => { if (!map[g.estudianteId]) map[g.estudianteId] = { student: gStu(g.estudianteId), grades: [] }; map[g.estudianteId].grades.push(g); });
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Bajo Rendimiento</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#dc2626;border-bottom:2px solid #dc2626;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #e5e7eb;padding:4px;text-align:left}th{background:#fee2e2}.bg-red-100{background:#fee2e2;color:#991b1b}.badge{padding:1px 5px;border-radius:8px;font-size:10px}.footer{text-align:center;margin-top:15px;font-size:10px;color:#9ca3af}</style></head><body><h1>Informe de Bajo Rendimiento</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p>${Object.values(map).map(({ student, grades }) => { const avg = (grades.reduce((a,b) => a+b.calificacion,0)/grades.length).toFixed(1); return `<h3 style="color:#dc2626">${student.nombre} - ${student.curso} (Prom: ${avg})</h3><table><thead><tr><th>Materia</th><th>Período</th><th>Fecha</th><th>Hora</th><th>Calif.</th><th>Profesor</th></tr></thead><tbody>${grades.map(g => `<tr><td>${gSub(g.materiaId)}</td><td>${g.periodo}</td><td>${fmtDate(g.fecha)}</td><td>${g.hora || '-'}</td><td><span class="badge bg-red-100">${g.calificacion}</span></td><td>${gTch(g.profesorId).nombre}</td></tr>`).join('')}</tbody></table><br>`; }).join('') || '<p class="text-center">Sin estudiantes con bajo rendimiento</p>'}<div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printAtt() {
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Asistencia</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#14b8a6;border-bottom:2px solid #14b8a6;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #e5e7eb;padding:4px;text-align:left}th{background:#f0fdfa}.footer{text-align:center;margin-top:15px;font-size:10px;color:#9ca3af}</style></head><body><h1>Reporte de Asistencia</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p>${S.courses.map(c => { const keys = Object.keys(S.attendance).filter(k => k.includes(c)).sort(); if (!keys.length) return ''; return `<h3 style="color:#14b8a6">${c}</h3><table><thead><tr><th>Fecha</th>${S.students.filter(s => s.curso === c).map(s => `<th>${s.nombre.split(' ')[0]}</th>`).join('')}</tr></thead><tbody>${keys.map(key => { const date = key.split('_')[0]; return `<tr><td>${fmtDate(date)}</td>${S.students.filter(s => s.curso === c).map(s => { const a = S.attendance[key][s.id]; return `<td>${a?.status === 'present' ? '✓' : a?.status === 'absent' ? '✗' : a?.status === 'late' ? 'T' : '-'}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table><br>`; }).join('')}<div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printNotes() {
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Notas</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#eab308;border-bottom:2px solid #eab308;padding-bottom:10px}.note{border:1px solid #e5e7eb;border-radius:6px;padding:10px;margin-bottom:8px;border-left:4px solid #eab308}.note .title{font-weight:bold}.note .meta{font-size:10px;color:#9ca3af}.footer{text-align:center;margin-top:15px;font-size:10px;color:#9ca3af}</style></head><body><h1>Notas de Profesores</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p>${S.notes.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(n => { const st = gStu(n.estudianteId); const tc = gTch(n.profesorId); return `<div class="note"><div class="title">${tc.nombre} → ${st.nombre} (${st.curso})</div><div class="meta">${fmtDT(n.fecha, n.hora)}</div><p>${n.contenido}</p></div>`; }).join('') || '<p class="text-center">Sin notas</p>'}<div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    function printTch() {
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head><title>Profesores</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;font-size:11px}h1{text-align:center;color:#06b6d4;border-bottom:2px solid #06b6d4;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #e5e7eb;padding:5px;text-align:left}th{background:#ecfeff}.footer{text-align:center;margin-top:15px;font-size:10px;color:#9ca3af}</style></head><body><h1>Directorio de Profesores</h1><p>Fecha: ${new Date().toLocaleString('es-ES')}</p><table><thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Materias</th></tr></thead><tbody>${S.teachers.map(t => { const subs = S.subjects.filter(s => s.profesorId === t.id); return `<tr><td>${t.nombre}</td><td>${t.email}</td><td>${t.telefono || '-'}</td><td>${subs.map(s => s.nombre).join(', ') || '-'}</td></tr>`; }).join('')}</tbody></table><div class="footer"><p>Sistema Escolar Integral v3.0</p></div></body></html>`);
+        pw.document.close(); setTimeout(() => pw.print(), 500);
+    }
+
+    // ==================== STUDENTS LIST ====================
+    function renderStudents() {
+        return `<div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div class="flex items-center gap-3"><div class="relative"><input type="text" id="searchStudent" placeholder="Buscar..." oninput="filterStu()" class="pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none w-64"><i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div><select id="filterCourse" onchange="filterStu()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option value="">Todos</option>${S.courses.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><button onclick="nav('printReport')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-print mr-1"></i>Imprimir</button></div><div class="bg-white rounded-xl shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50 border-b"><tr><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Foto</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estudiante</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Teléfono</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Curso</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="stuTable">${renderStuRows(S.students)}</tbody></table></div><div id="stuModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay"><div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 fade-in"><div class="flex items-center justify-between mb-6"><h3 class="text-lg font-bold text-gray-800">Editar Estudiante</h3><button onclick="closeModal('stuModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><form onsubmit="saveStuEdit(event)"><input type="hidden" id="stuEditId"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label><input type="text" id="editStuName" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="editStuEmail" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="editStuPhone" class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Curso</label><select id="editStuCourse" class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none">${S.courses.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Estado</label><select id="editStuStatus" class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none"><option>Activo</option><option>Inactivo</option></select></div></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" onclick="closeModal('stuModal')" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button><button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Guardar</button></div></form></div></div>`;
+    }
+
+    function renderStuRows(students) {
+        return students.map(s => `<tr class="border-b hover:bg-gray-50"><td class="px-5 py-3">${s.foto ? `<img src="${s.foto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-xs text-green-600"></i></div>`}</td><td class="px-5 py-3"><p class="text-sm font-medium text-gray-800">${s.nombre}</p><p class="text-xs text-gray-500">${s.email}</p></td><td class="px-5 py-3 text-sm">📞 ${s.telefono || '-'}</td><td class="px-5 py-3"><span class="badge bg-blue-100 text-blue-700">${s.curso}</span></td><td class="px-5 py-3"><span class="badge ${s.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">${s.estado}</span></td><td class="px-5 py-3"><div class="flex gap-2"><button onclick="viewFicha('${s.id}')" class="text-green-500 text-sm" title="Ver ficha"><i class="fas fa-eye"></i></button><button onclick="editStu('${s.id}')" class="text-blue-500 text-sm"><i class="fas fa-edit"></i></button><button onclick="delStu('${s.id}')" class="text-red-500 text-sm"><i class="fas fa-trash"></i></button></div></td></tr>`).join('') || '<tr><td colspan="6" class="px-5 py-8 text-center text-gray-400">Sin estudiantes</td></tr>';
+    }
+
+    function filterStu() {
+        const s = (document.getElementById('searchStudent')?.value || '').toLowerCase();
+        const c = document.getElementById('filterCourse')?.value || '';
+        let f = S.students.filter(st => st.nombre.toLowerCase().includes(s) || st.email.toLowerCase().includes(s));
+        if (c) f = f.filter(st => st.curso === c);
+        const tb = document.getElementById('stuTable');
+        if (tb) tb.innerHTML = renderStuRows(f);
+    }
+
+    function editStu(id) {
+        const s = gStu(id);
+        document.getElementById('stuModal').classList.remove('hidden');
+        document.getElementById('stuEditId').value = s.id;
+        document.getElementById('editStuName').value = s.nombre;
+        document.getElementById('editStuEmail').value = s.email;
+        document.getElementById('editStuPhone').value = s.telefono || '';
+        document.getElementById('editStuCourse').value = s.curso;
+        document.getElementById('editStuStatus').value = s.estado || 'Activo';
+    }
+
+    function saveStuEdit(e) {
+        e.preventDefault();
+        const id = document.getElementById('stuEditId').value;
+        const idx = S.students.findIndex(s => s.id === id);
+        S.students[idx] = { ...S.students[idx], nombre: document.getElementById('editStuName').value, email: document.getElementById('editStuEmail').value, telefono: document.getElementById('editStuPhone').value, curso: document.getElementById('editStuCourse').value, estado: document.getElementById('editStuStatus').value };
+        save(); closeModal('stuModal'); notify('Estudiante actualizado', 'success'); renderApp();
+    }
+
+    function delStu(id) { if (confirm('¿Eliminar este estudiante?')) { S.students = S.students.filter(s => s.id !== id); S.grades = S.grades.filter(g => g.estudianteId !== id); S.notes = S.notes.filter(n => n.estudianteId !== id); save(); renderApp(); notify('Estudiante eliminado', 'warning'); } }
+
+    // ==================== TEACHERS ====================
+    function renderTeachers() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Profesores</h2></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">${S.teachers.map(t => { const subs = S.subjects.filter(s => s.profesorId === t.id); return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-chalkboard-teacher text-green-600 text-lg"></i></div><div><h4 class="font-semibold text-gray-800">${t.nombre}</h4><p class="text-xs text-gray-500">${t.email} | 📞 ${t.telefono || 'N/A'}</p></div></div><div class="mb-3"><p class="text-xs font-medium text-gray-600 mb-1">Materias (${subs.length})</p><div class="flex flex-wrap gap-1">${subs.map(s => `<span class="badge bg-blue-100 text-blue-700">${s.nombre}</span>`).join('') || '<span class="text-xs text-gray-400">Sin materias</span>'}</div></div></div>`; }).join('')}</div>`;
+    }
+
+    // ==================== SUBJECTS ====================
+    function renderSubjects() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Materias</h2></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">${S.subjects.map(sub => { const tc = gTch(sub.profesorId); return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-book text-purple-600"></i></div><div><h4 class="font-semibold text-gray-800">${sub.nombre}</h4><span class="badge bg-blue-100 text-blue-700">${sub.curso}</span></div></div><p class="text-sm text-gray-600"><i class="fas fa-chalkboard-teacher mr-1 text-gray-400"></i>${tc.nombre}</p></div>`; }).join('') || '<div class="col-span-3 text-center text-gray-400 py-12">Sin materias</div>'}</div>`;
+    }
+
+    // ==================== COURSES ====================
+    function renderCourses() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Cursos</h2></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">${S.courses.map(c => { const sts = S.students.filter(s => s.curso === c); const subs = S.subjects.filter(s => s.curso === c); return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center"><i class="fas fa-layer-group text-indigo-600"></i></div><h4 class="font-semibold text-gray-800">${c}</h4></div><div class="space-y-2 text-sm"><div class="flex justify-between"><span class="text-gray-500">Estudiantes:</span><span class="font-medium">${sts.length}</span></div><div class="flex justify-between"><span class="text-gray-500">Materias:</span><span class="font-medium">${subs.length}</span></div></div></div>`; }).join('')}</div>`;
+    }
+
+    // ==================== ALL GRADES ====================
+    function renderAllGrades() {
+        return `<div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div class="flex items-center gap-3"><select id="agCourse" onchange="filterAG()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.courses.map(c => `<option value="${c}">${c}</option>`).join('')}</select><select id="agPeriod" onchange="filterAG()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.periods.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div></div><div class="bg-white rounded-xl shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50 border-b"><tr><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estudiante</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Materia</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Curso</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Período</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Hora</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Calif.</th></tr></thead><tbody id="agTable">${renderAGRows(S.grades)}</tbody></table></div>`;
+    }
+
+    function renderAGRows(grades) {
+        return grades.map(g => { const st = gStu(g.estudianteId); const sub = S.subjects.find(s => s.id === g.materiaId); return `<tr class="border-b hover:bg-gray-50"><td class="px-5 py-3 text-sm font-medium">${st.nombre}</td><td class="px-5 py-3 text-sm text-gray-600">${gSub(g.materiaId)}</td><td class="px-5 py-3"><span class="badge bg-blue-100 text-blue-700">${sub?.curso || '-'}</span></td><td class="px-5 py-3 text-sm">${g.periodo}</td><td class="px-5 py-3 text-sm text-gray-500">${fmtDate(g.fecha)}</td><td class="px-5 py-3 text-sm text-gray-500">${g.hora || '-'}</td><td class="px-5 py-3"><span class="badge ${gClr(g.calificacion)} font-bold">${g.calificacion}</span></td></tr>`; }).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-gray-400">Sin calificaciones</td></tr>';
+    }
+
+    function filterAG() {
+        const c = document.getElementById('agCourse')?.value || '';
+        const p = document.getElementById('agPeriod')?.value || '';
+        let f = S.grades;
+        if (c) f = f.filter(g => { const s = S.subjects.find(sb => sb.id === g.materiaId); return s?.curso === c; });
+        if (p) f = f.filter(g => g.periodo === p);
+        const tb = document.getElementById('agTable');
+        if (tb) tb.innerHTML = renderAGRows(f);
+    }
+
+    // ==================== ATTENDANCE ====================
+    function renderAttendance() {
+        if (S.userType === 'teacher') {
+            const myS = S.subjects.filter(s => s.profesorId === S.currentUser.id);
+            const myC = [...new Set(myS.map(s => s.curso))];
+            return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Pase de Lista Diario</h2><p class="text-sm text-gray-500">Fecha: <strong>${today()}</strong></p></div>${myC.map(c => { const sts = S.students.filter(s => s.curso === c && s.estado === 'Activo'); const key = today() + '_' + c; if (!S.attendance[key]) S.attendance[key] = {}; return `<div class="bg-white rounded-xl shadow-sm p-6 mb-5"><div class="flex items-center justify-between mb-4"><h3 class="font-semibold text-gray-800"><i class="fas fa-clipboard-check mr-2 text-blue-500"></i>${c}</h3><button onclick="saveAtt('${c}')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-save mr-1"></i>Guardar</button></div><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estudiante</th><th class="px-4 py-2 text-center text-xs font-semibold text-gray-500">Presente</th><th class="px-4 py-2 text-center text-xs font-semibold text-gray-500">Ausente</th><th class="px-4 py-2 text-center text-xs font-semibold text-gray-500">Tardanza</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Obs.</th></tr></thead><tbody>${sts.map(st => { const status = S.attendance[key][st.id] || {}; return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 text-sm font-medium">${st.nombre}</td><td class="px-4 py-2 text-center"><input type="radio" name="att_${st.id}" value="present" class="w-5 h-5 accent-green-600" ${status.status === 'present' ? 'checked' : ''}></td><td class="px-4 py-2 text-center"><input type="radio" name="att_${st.id}" value="absent" class="w-5 h-5 accent-red-600" ${status.status === 'absent' ? 'checked' : ''}></td><td class="px-4 py-2 text-center"><input type="radio" name="att_${st.id}" value="late" class="w-5 h-5 accent-yellow-600" ${status.status === 'late' ? 'checked' : ''}></td><td class="px-4 py-2"><input type="text" id="obs_${st.id}" value="${status.obs || ''}" class="w-full border rounded px-2 py-1 text-xs" placeholder="Obs."></td></tr>`; }).join('')}</tbody></table></div>`; }).join('') || '<div class="text-center text-gray-400 py-12">Sin cursos</div>'}`;
+        }
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Pase de Lista - Global</h2></div><div class="mb-4 flex gap-3"><select id="attCourse" onchange="filterAtt()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.courses.map(c => `<option value="${c}">${c}</option>`).join('')}</select><input type="date" id="attDate" value="${today()}" onchange="filterAtt()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div><div id="attContent">${renderAttContent(S.courses, today())}</div>`;
+    }
+
+    function saveAtt(course) {
+        const key = today() + '_' + course;
+        if (!S.attendance[key]) S.attendance[key] = {};
+        S.students.filter(s => s.curso === course && s.estado === 'Activo').forEach(st => {
+            const present = document.querySelector(`input[name="att_${st.id}"][value="present"]`);
+            const absent = document.querySelector(`input[name="att_${st.id}"][value="absent"]`);
+            const late = document.querySelector(`input[name="att_${st.id}"][value="late"]`);
+            const obs = document.getElementById(`obs_${st.id}`);
+            let status = null;
+            if (present?.checked) status = 'present'; else if (absent?.checked) status = 'absent'; else if (late?.checked) status = 'late';
+            S.attendance[key][st.id] = { status, obs: obs?.value || '' };
+        });
+        save(); notify(`Asistencia de ${course} guardada`, 'success');
+    }
+
+    function renderAttContent(courses, date) {
+        return courses.map(c => {
+            const key = date + '_' + c; const att = S.attendance[key] || {}; const sts = S.students.filter(s => s.curso === c && s.estado === 'Activo');
+            const present = sts.filter(s => att[s.id]?.status === 'present').length; const absent = sts.filter(s => att[s.id]?.status === 'absent').length; const late = sts.filter(s => att[s.id]?.status === 'late').length;
+            return `<div class="bg-white rounded-xl shadow-sm p-5 mb-4"><div class="flex items-center justify-between mb-3"><h3 class="font-semibold text-gray-800">${c}</h3><div class="flex gap-3 text-sm"><span class="text-green-600"><i class="fas fa-check mr-1"></i>${present}</span><span class="text-red-600"><i class="fas fa-times mr-1"></i>${absent}</span><span class="text-yellow-600"><i class="fas fa-clock mr-1"></i>${late}</span></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">${sts.map(st => { const a = att[st.id]; if (!a) return ''; return `<div class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"><span>${st.nombre}</span><span class="badge ${a.status === 'present' ? 'bg-green-100 text-green-700' : a.status === 'absent' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${a.status === 'present' ? 'Presente' : a.status === 'absent' ? 'Ausente' : 'Tardanza'}</span></div>`; }).join('') || '<p class="text-xs text-gray-400">Sin registro</p>'}</div></div>`;
+        }).join('');
+    }
+
+    function filterAtt() {
+        const c = document.getElementById('attCourse')?.value || '';
+        const d = document.getElementById('attDate')?.value || today();
+        const courses = c ? [c] : S.courses;
+        const el = document.getElementById('attContent');
+        if (el) el.innerHTML = renderAttContent(courses, d);
+    }
+
+    // ==================== TEACHER: MY SUBJECTS ====================
+    function renderMySubjects() {
+        const myS = S.subjects.filter(s => s.profesorId === S.currentUser.id);
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Mis Materias</h2></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">${myS.map(sub => { const gs = S.grades.filter(g => g.materiaId === sub.id); const sts = [...new Set(gs.map(g => g.estudianteId))]; const avg = gs.length > 0 ? (gs.reduce((a,b) => a+b.calificacion,0)/gs.length).toFixed(1) : '-'; return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-book text-purple-600 text-lg"></i></div><div><h4 class="font-semibold text-gray-800 text-lg">${sub.nombre}</h4><span class="badge bg-blue-100 text-blue-700">${sub.curso}</span></div></div><div class="grid grid-cols-3 gap-3 mb-4"><div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xl font-bold">${sts.length}</p><p class="text-xs text-gray-500">Estudiantes</p></div><div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xl font-bold">${gs.length}</p><p class="text-xs text-gray-500">Notas</p></div><div class="bg-gray-50 p-3 rounded-lg text-center"><p class="text-xl font-bold ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : ''}">${avg}</p><p class="text-xs text-gray-500">Promedio</p></div></div><div class="flex gap-2"><button onclick="nav('manageGrades')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg"><i class="fas fa-edit mr-1"></i>Calificaciones</button><button onclick="nav('manageNotes')" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm py-2 rounded-lg"><i class="fas fa-sticky-note mr-1"></i>Notas</button></div></div>`; }).join('') || '<div class="col-span-3 text-center text-gray-400 py-12">Sin materias asignadas</div>'}</div>`;
+    }
+
+    // ==================== ENROLLED ====================
+    function renderEnrolledStudents() {
+        const myS = S.subjects.filter(s => s.profesorId === S.currentUser.id);
+        const myC = [...new Set(myS.map(s => s.curso))];
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Estudiantes Inscritos</h2></div>${myC.map(c => { const sts = S.students.filter(s => s.curso === c && s.estado === 'Activo'); const subs = myS.filter(s => s.curso === c); return `<div class="bg-white rounded-xl shadow-sm p-6 mb-5"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center"><i class="fas fa-layer-group text-indigo-600"></i></div><div><h3 class="font-semibold text-gray-800">${c}</h3><p class="text-xs text-gray-500">${sts.length} estudiantes</p></div></div></div><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estudiante</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Teléfono</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Promedio</th></tr></thead><tbody>${sts.map(st => { const gs = S.grades.filter(g => g.estudianteId === st.id && subs.some(s => s.id === g.materiaId)); const avg = gs.length > 0 ? (gs.reduce((a,b) => a+b.calificacion,0)/gs.length).toFixed(1) : '-'; return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 text-sm font-medium">${st.nombre}</td><td class="px-4 py-2 text-sm">📞 ${st.telefono || '-'}</td><td class="px-4 py-2"><span class="badge ${st.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">${st.estado}</span></td><td class="px-4 py-2 font-bold ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : ''}">${avg}</span></td></tr>`; }).join('')}</tbody></table></div>`; }).join('') || '<div class="text-center text-gray-400 py-12">Sin cursos</div>'}`;
+    }
+
+    // ==================== MANAGE GRADES ====================
+    function renderManageGrades() {
+        const myS = S.subjects.filter(s => s.profesorId === S.currentUser.id);
+        return `<div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div class="flex items-center gap-3"><select id="mgSubject" onchange="filterMG()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todas</option>${myS.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select><select id="mgPeriod" onchange="filterMG()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.periods.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div><button onclick="showTGModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Nueva Calificación</button></div><div class="bg-white rounded-xl shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50 border-b"><tr><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estudiante</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Materia</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Período</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Calif.</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th></tr></thead><tbody id="mgTable">${renderMGRows(S.grades.filter(g => g.profesorId === S.currentUser.id))}</tbody></table></div><div id="tgModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay"><div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 fade-in"><div class="flex items-center justify-between mb-6"><h3 id="tgModalTitle" class="text-lg font-bold text-gray-800">Nueva Calificación</h3><button onclick="closeModal('tgModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><form onsubmit="saveTG(event)"><input type="hidden" id="tgEditId"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Estudiante</label><select id="tgStudent" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Seleccionar</option>${S.students.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Materia</label><select id="tgSubject" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">${myS.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Período</label><select id="tgPeriod" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">${S.periods.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Calificación (0-100)</label><input type="number" id="tgValue" min="0" max="100" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" onclick="closeModal('tgModal')" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button><button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Guardar</button></div></form></div></div>`;
+    }
+
+    function renderMGRows(grades) {
+        return grades.map(g => `<tr class="border-b hover:bg-gray-50"><td class="px-5 py-3 text-sm font-medium">${gStu(g.estudianteId).nombre}</td><td class="px-5 py-3 text-sm text-gray-600">${gSub(g.materiaId)}</td><td class="px-5 py-3 text-sm text-gray-600">${g.periodo}</td><td class="px-5 py-3 text-sm text-gray-500">${fmtDT(g.fecha, g.hora)}</td><td class="px-5 py-3"><span class="badge ${gClr(g.calificacion)} font-bold text-lg">${g.calificacion}</span></td><td class="px-5 py-3"><div class="flex gap-2"><button onclick="editTG('${g.id}')" class="text-blue-500 text-sm"><i class="fas fa-edit"></i></button><button onclick="delGrade('${g.id}')" class="text-red-500 text-sm"><i class="fas fa-trash"></i></button></div></td></tr>`).join('') || '<tr><td colspan="6" class="px-5 py-8 text-center text-gray-400">Sin calificaciones</td></tr>';
+    }
+
+    function filterMG() {
+        const s = document.getElementById('mgSubject')?.value || '';
+        const p = document.getElementById('mgPeriod')?.value || '';
+        let f = S.grades.filter(g => g.profesorId === S.currentUser.id);
+        if (s) f = f.filter(g => g.materiaId === s);
+        if (p) f = f.filter(g => g.periodo === p);
+        const tb = document.getElementById('mgTable');
+        if (tb) tb.innerHTML = renderMGRows(f);
+    }
+
+    function showTGModal(id = null) {
+        document.getElementById('tgModal').classList.remove('hidden');
+        document.getElementById('tgEditId').value = '';
+        document.getElementById('tgStudent').value = '';
+        document.getElementById('tgValue').value = '';
+        document.getElementById('tgModalTitle').textContent = 'Nueva Calificación';
+        if (id) { const g = S.grades.find(gr => gr.id === id); if (g) { document.getElementById('tgEditId').value = g.id; document.getElementById('tgStudent').value = g.estudianteId; document.getElementById('tgSubject').value = g.materiaId; document.getElementById('tgPeriod').value = g.periodo; document.getElementById('tgValue').value = g.calificacion; document.getElementById('tgModalTitle').textContent = 'Editar Calificación'; } }
+    }
+
+    function saveTG(e) {
+        e.preventDefault();
+        const id = document.getElementById('tgEditId').value;
+        const subId = document.getElementById('tgSubject').value;
+        const cal = parseInt(document.getElementById('tgValue').value);
+        const data = { estudianteId: document.getElementById('tgStudent').value, materiaId: subId, periodo: document.getElementById('tgPeriod').value, calificacion: cal, profesorId: S.currentUser.id };
+        if (id) { const idx = S.grades.findIndex(g => g.id === id); S.grades[idx] = { ...S.grades[idx], ...data }; }
+        else { S.grades.push({ id: genId(), ...data, fecha: today(), hora: nowTime() }); }
+        if (cal < 70) { const st = gStu(data.estudianteId); S.notifications.push({ id: genId(), message: `⚠️ Calif. baja: ${st.nombre} obtuvo ${cal} en ${gSub(subId)} (${data.periodo}). Tel: ${st.telefono}`, date: today(), hora: nowTime(), read: false, type: 'low_grade' }); }
+        save(); closeModal('tgModal'); notify('Calificación guardada', 'success'); renderApp();
+    }
+
+    function editTG(id) { showTGModal(id); }
+    function delGrade(id) { if (confirm('¿Eliminar?')) { S.grades = S.grades.filter(g => g.id !== id); save(); renderApp(); } }
+
+    // ==================== MANAGE NOTES ====================
+    function renderManageNotes() {
+        const myN = S.notes.filter(n => n.profesorId === S.currentUser.id);
+        return `<div class="mb-6 flex items-center justify-between"><select id="mnStudent" onchange="filterMN()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.students.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')}</select><button onclick="showNoteModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Nueva Nota</button></div><div id="mnContainer">${renderMNRows(myN)}</div><div id="noteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay"><div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 fade-in"><div class="flex items-center justify-between mb-6"><h3 id="noteModalTitle" class="text-lg font-bold text-gray-800">Nueva Nota</h3><button onclick="closeModal('noteModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><form onsubmit="saveNote(event)"><input type="hidden" id="noteEditId"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Estudiante</label><select id="noteStudent" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Seleccionar</option>${S.students.map(s => `<option value="${s.id}">${s.nombre} (${s.curso})</option>`).join('')}</select></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Observación</label><textarea id="noteContent" rows="5" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Escriba su observación..."></textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" onclick="closeModal('noteModal')" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button><button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Guardar</button></div></form></div></div>`;
+    }
+
+    function renderMNRows(notes) {
+        return notes.length === 0 ? '<div class="text-center text-gray-400 py-12">Sin notas</div>' : `<div class="space-y-4">${notes.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(n => { const st = gStu(n.estudianteId); return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-start justify-between mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-green-600"></i></div><div><h4 class="font-semibold text-gray-800">${st.nombre}</h4><p class="text-xs text-gray-500">${st.curso} | ${fmtDT(n.fecha, n.hora)}</p></div></div><div class="flex gap-1"><button onclick="editNote('${n.id}')" class="text-blue-500 text-xs"><i class="fas fa-edit"></i></button><button onclick="delNote('${n.id}')" class="text-red-500 text-xs"><i class="fas fa-trash"></i></button></div></div><p class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">${n.contenido}</p></div>`; }).join('')}</div>`;
+    }
+
+    function filterMN() {
+        const s = document.getElementById('mnStudent')?.value || '';
+        let f = S.notes.filter(n => n.profesorId === S.currentUser.id);
+        if (s) f = f.filter(n => n.estudianteId === s);
+        const c = document.getElementById('mnContainer');
+        if (c) c.innerHTML = renderMNRows(f);
+    }
+
+    function showNoteModal(id = null) {
+        document.getElementById('noteModal').classList.remove('hidden');
+        document.getElementById('noteEditId').value = '';
+        document.getElementById('noteStudent').value = '';
+        document.getElementById('noteContent').value = '';
+        document.getElementById('noteModalTitle').textContent = 'Nueva Nota';
+        if (id) { const n = S.notes.find(no => no.id === id); if (n) { document.getElementById('noteEditId').value = n.id; document.getElementById('noteStudent').value = n.estudianteId; document.getElementById('noteContent').value = n.contenido; document.getElementById('noteModalTitle').textContent = 'Editar Nota'; } }
+    }
+
+    function saveNote(e) {
+        e.preventDefault();
+        const id = document.getElementById('noteEditId').value;
+        const data = { estudianteId: document.getElementById('noteStudent').value, contenido: document.getElementById('noteContent').value, profesorId: S.currentUser.id };
+        if (id) { const idx = S.notes.findIndex(n => n.id === id); S.notes[idx] = { ...S.notes[idx], ...data }; }
+        else { S.notes.push({ id: genId(), ...data, fecha: today(), hora: nowTime() }); }
+        save(); closeModal('noteModal'); notify('Nota guardada', 'success'); renderApp();
+    }
+
+    function editNote(id) { showNoteModal(id); }
+    function delNote(id) { if (confirm('¿Eliminar?')) { S.notes = S.notes.filter(n => n.id !== id); save(); renderApp(); } }
+
+    // ==================== LOW PERFORMERS ====================
+    function renderLowPerformers() {
+        const low = S.grades.filter(g => g.profesorId === S.currentUser.id && g.calificacion < 70);
+        const map = {}; low.forEach(g => { if (!map[g.estudianteId]) map[g.estudianteId] = { student: gStu(g.estudianteId), grades: [] }; map[g.estudianteId].grades.push(g); });
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Bajo Rendimiento</h2><p class="text-sm text-gray-500">Calificaciones menores a 70</p></div>${Object.keys(map).length === 0 ? '<div class="bg-white rounded-xl shadow-sm p-12 text-center"><i class="fas fa-check-circle text-4xl text-green-400 mb-4"></i><p class="text-gray-600">Todos con buen rendimiento</p></div>' : Object.values(map).map(({ student, grades }) => { const avg = (grades.reduce((a,b) => a+b.calificacion,0)/grades.length).toFixed(1); const notes = S.notes.filter(n => n.estudianteId === student.id && n.profesorId === S.currentUser.id); return `<div class="bg-white rounded-xl shadow-sm p-6 mb-5 border-l-4 border-red-400"><div class="flex items-start gap-4 mb-4">${student.foto ? `<img src="${student.foto}" class="w-14 h-14 rounded-full object-cover">` : `<div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-red-600 text-xl"></i></div>`}<div><h3 class="text-lg font-bold">${student.nombre}</h3><p class="text-sm text-gray-500">${student.curso} | 📞 ${student.telefono || 'N/A'}</p><div class="flex gap-2 mt-1"><span class="badge bg-red-100 text-red-700">Prom: ${avg}</span><span class="badge bg-orange-100 text-orange-700">${grades.length} bajas</span></div></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><h4 class="text-sm font-semibold text-gray-600 mb-2">Calificaciones Bajas</h4><div class="space-y-2">${grades.map(g => `<div class="flex justify-between p-2 bg-red-50 rounded"><span class="text-sm">${gSub(g.materiaId)} (${g.periodo})</span><span class="badge bg-red-200 text-red-700">${g.calificacion}</span></div>`).join('')}</div></div><div><h4 class="text-sm font-semibold text-gray-600 mb-2">Notas</h4>${notes.length ? notes.map(n => `<div class="p-3 bg-gray-50 rounded mb-2"><p class="text-xs text-gray-400">${fmtDT(n.fecha, n.hora)}</p><p class="text-sm text-gray-700">${n.contenido}</p></div>`).join('') : '<p class="text-sm text-gray-400">Sin notas</p>'}</div></div><div class="mt-4 flex gap-2"><button onclick="nav('manageNotes')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-sticky-note mr-1"></i>Agregar Nota</button><button onclick="sendNotif('${student.id}','${avg}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-paper-plane mr-1"></i>Notificar</button></div></div>`; }).join('')}`;
+    }
+
+    function sendNotif(studentId, avg) {
+        const st = gStu(studentId);
+        const low = S.grades.filter(g => g.estudianteId === studentId && g.profesorId === S.currentUser.id && g.calificacion < 70);
+        const details = low.map(g => `${gSub(g.materiaId)}: ${g.calificacion} (${g.periodo})`).join(', ');
+        S.notifications.push({ id: genId(), message: `📩 Notificación a ${st.nombre} (${st.telefono}): Bajo rendimiento. Prom: ${avg}. Materias: ${details}. Prof: ${S.currentUser.nombre}`, date: today(), hora: nowTime(), read: false, type: 'notification_sent' });
+        save(); notify(`Notificación enviada a ${st.nombre}`, 'success'); renderApp();
+    }
+
+    // ==================== STUDENT: MY GRADES ====================
+    function renderMyGrades() {
+        const myG = S.grades.filter(g => g.estudianteId === S.currentUser.id);
+        const avg = myG.length > 0 ? (myG.reduce((a,b) => a+b.calificacion,0)/myG.length).toFixed(1) : '-';
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Mis Calificaciones</h2><p class="text-sm text-gray-500">Promedio General: <span class="font-bold text-lg ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : ''}">${avg}</span></p></div>${['P1','P2','P3','P4'].map(p => { const pg = myG.filter(g => g.periodo === p); if (!pg.length) return ''; const pAvg = (pg.reduce((a,b) => a+b.calificacion,0)/pg.length).toFixed(1); return `<div class="bg-white rounded-xl shadow-sm p-6 mb-5"><div class="flex items-center justify-between mb-4"><h3 class="font-semibold text-gray-800"><i class="fas fa-calendar mr-2 text-blue-500"></i>${p}</h3><span class="text-sm font-medium ${pAvg >= 70 ? 'text-green-600' : 'text-red-600'}">Promedio: ${pAvg}</span></div><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Materia</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Profesor</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Fecha/Hora</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Calif.</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th></tr></thead><tbody>${pg.map(g => { const tc = gTch((S.subjects.find(s => s.id === g.materiaId) || {}).profesorId); return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-3 text-sm font-medium">${gSub(g.materiaId)}</td><td class="px-4 py-3 text-sm text-gray-600">${tc.nombre}</td><td class="px-4 py-3 text-sm text-gray-500">${fmtDT(g.fecha, g.hora)}</td><td class="px-4 py-3"><span class="badge ${gClr(g.calificacion)} font-bold text-lg">${g.calificacion}</span></td><td class="px-4 py-3"><span class="badge ${gBadge(g.calificacion)}">${g.calificacion >= 70 ? 'Aprobado' : 'Reprobado'}</span></td></tr>`; }).join('')}</tbody></table></div>`; }).join('') || '<div class="text-center text-gray-400 py-12">Sin calificaciones</div>'}`;
+    }
+
+    // ==================== STUDENT: MY SUBJECTS ====================
+    function renderStudentSubjects() {
+        const myG = S.grades.filter(g => g.estudianteId === S.currentUser.id);
+        const mySubIds = [...new Set(myG.map(g => g.materiaId))];
+        const mySubs = S.subjects.filter(s => mySubIds.includes(s.id));
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Mis Materias</h2></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">${mySubs.map(sub => { const tc = gTch(sub.profesorId); const sg = myG.filter(g => g.materiaId === sub.id); const avg = sg.length > 0 ? (sg.reduce((a,b) => a+b.calificacion,0)/sg.length).toFixed(1) : '-'; return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-center gap-3 mb-4"><div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-book text-purple-600 text-lg"></i></div><div><h4 class="font-semibold text-gray-800">${sub.nombre}</h4><span class="badge bg-blue-100 text-blue-700">${sub.curso}</span></div></div><div class="space-y-2 text-sm"><p class="text-gray-600"><i class="fas fa-chalkboard-teacher mr-1 text-gray-400"></i>${tc.nombre}</p><p class="text-gray-600"><i class="fas fa-chart-line mr-1 text-gray-400"></i>Promedio: <span class="font-semibold ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : ''}">${avg}</span></p></div></div>`; }).join('') || '<div class="col-span-3 text-center text-gray-400 py-12">Sin materias</div>'}</div>`;
+    }
+
+    // ==================== STUDENT: MY ATTENDANCE ====================
+    function renderMyAttendance() {
+        const myCourse = S.currentUser.curso;
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Mi Asistencia</h2><p class="text-sm text-gray-500">Curso: ${myCourse}</p></div><div class="bg-white rounded-xl shadow-sm p-6"><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Fecha</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Obs.</th></tr></thead><tbody>${Object.keys(S.attendance).filter(k => k.includes(myCourse)).sort((a,b) => b.localeCompare(a)).map(key => { const date = key.split('_')[0]; const att = S.attendance[key][S.currentUser.id]; if (!att || !att.status) return ''; return `<tr class="border-b"><td class="px-4 py-2 text-sm">${fmtDate(date)}</td><td class="px-4 py-2"><span class="badge ${att.status === 'present' ? 'bg-green-100 text-green-700' : att.status === 'absent' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${att.status === 'present' ? 'Presente' : att.status === 'absent' ? 'Ausente' : 'Tardanza'}</span></td><td class="px-4 py-2 text-sm text-gray-600">${att.obs || '-'}</td></tr>`; }).join('') || '<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">Sin registros</td></tr>'}</tbody></table></div>`;
+    }
+
+    // ==================== PSYCHOLOGY ====================
+    function renderGradeReport() {
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Informe de Calificaciones</h2></div><div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">${statCard('Total', S.grades.length, 'fas fa-clipboard-list', 'bg-blue-100 text-blue-600')}${statCard('Promedio', S.grades.length > 0 ? (S.grades.reduce((a,b) => a+b.calificacion,0)/S.grades.length).toFixed(1) : '-', 'fas fa-chart-line', 'bg-green-100 text-green-600')}${statCard('Aprobados', S.grades.filter(g => g.calificacion >= 70).length, 'fas fa-check-circle', 'bg-emerald-100 text-emerald-600')}${statCard('Reprobados', S.grades.filter(g => g.calificacion < 70).length, 'fas fa-times-circle', 'bg-red-100 text-red-600')}</div><div class="bg-white rounded-xl shadow-sm p-6"><h3 class="font-semibold text-gray-800 mb-4"><i class="fas fa-users mr-2 text-green-500"></i>Detalle por Estudiante</h3><table class="w-full"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estudiante</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Teléfono</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Curso</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Promedio</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Más Baja</th><th class="px-4 py-2 text-left text-xs font-semibold text-gray-500">Estado</th></tr></thead><tbody>${S.students.map(s => { const gs = S.grades.filter(g => g.estudianteId === s.id); const avg = gs.length > 0 ? (gs.reduce((a,b) => a+b.calificacion,0)/gs.length).toFixed(1) : '-'; const min = gs.length > 0 ? Math.min(...gs.map(g => g.calificacion)) : '-'; const hasLow = gs.some(g => g.calificacion < 70); return `<tr class="border-b hover:bg-gray-50"><td class="px-4 py-2 text-sm font-medium">${s.nombre}</td><td class="px-4 py-2 text-sm">📞 ${s.telefono || '-'}</td><td class="px-4 py-2"><span class="badge bg-blue-100 text-blue-700">${s.curso}</span></td><td class="px-4 py-2 font-bold ${avg >= 70 ? 'text-green-600' : avg !== '-' ? 'text-red-600' : ''}">${avg}</td><td class="px-4 py-2"><span class="badge ${min < 70 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${min}</span></td><td class="px-4 py-2"><span class="badge ${hasLow ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${hasLow ? 'Alerta' : 'Normal'}</span></td></tr>`; }).join('')}</tbody></table></div>`;
+    }
+
+    function renderStudentNotes() {
+        return `<div class="mb-6 flex flex-wrap gap-3"><select id="snStudent" onchange="filterSN()" class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"><option value="">Todos</option>${S.students.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')}</select></div><div id="snContainer">${renderSNRows(S.notes)}</div>`;
+    }
+
+    function renderSNRows(notes) {
+        return notes.length === 0 ? '<div class="text-center text-gray-400 py-12">Sin notas</div>' : `<div class="space-y-4">${notes.sort((a,b) => b.fecha.localeCompare(a.fecha)).map(n => { const st = gStu(n.estudianteId); const tc = gTch(n.profesorId); return `<div class="bg-white rounded-xl shadow-sm p-5 card-hover"><div class="flex items-start justify-between mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-user text-green-600"></i></div><div><h4 class="font-semibold">${st.nombre}</h4><p class="text-xs text-gray-500">${st.curso} | 📞 ${st.telefono || 'N/A'}</p></div></div><div><p class="text-sm font-medium text-gray-700">${tc.nombre}</p><p class="text-xs text-gray-400">${fmtDT(n.fecha, n.hora)}</p></div></div><p class="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">${n.contenido}</p></div>`; }).join('')}</div>`;
+    }
+
+    function filterSN() {
+        const s = document.getElementById('snStudent')?.value || '';
+        let f = S.notes;
+        if (s) f = f.filter(n => n.estudianteId === s);
+        const c = document.getElementById('snContainer');
+        if (c) c.innerHTML = renderSNRows(f);
+    }
+
+    function renderAlerts() {
+        const low = S.grades.filter(g => g.calificacion < 70); const map = {}; low.forEach(g => { if (!map[g.estudianteId]) map[g.estudianteId] = { student: gStu(g.estudianteId), grades: [] }; map[g.estudianteId].grades.push(g); });
+        return `<div class="mb-6"><h2 class="text-lg font-semibold text-gray-800">Alertas Académicas</h2></div>${Object.keys(map).length === 0 ? '<div class="text-center text-gray-400 py-12"><i class="fas fa-check-circle text-4xl text-green-400 mb-4"></i><p>Sin alertas</p></div>' : Object.values(map).map(({ student, grades }) => { const avg = (grades.reduce((a,b) => a+b.calificacion,0)/grades.length).toFixed(1); const notes = S.notes.filter(n => n.estudianteId === student.id); return `<div class="bg-white rounded-xl shadow-sm p-6 mb-5 border-l-4 border-red-400"><div class="flex items-start gap-4 mb-4">${student.foto ? `<img src="${student.foto}" class="w-14 h-14 rounded-full object-cover">` : `<div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center"><i class="fas fa-exclamation-triangle text-red-600 text-xl"></i></div>`}<div><h3 class="text-lg font-bold">${student.nombre}</h3><p class="text-sm text-gray-500">${student.curso} | 📞 ${student.telefono || 'N/A'}</p><div class="flex gap-2 mt-1"><span class="badge bg-red-100 text-red-700">Prom: ${avg}</span>${notes.length ? `<span class="badge bg-yellow-100 text-yellow-700">${notes.length} notas</span>` : ''}</div></div></div><div class="space-y-2">${grades.map(g => `<div class="flex justify-between p-2 bg-red-50 rounded"><span class="text-sm">${gSub(g.materiaId)} (${g.periodo}) - ${fmtDate(g.fecha)}</span><span class="badge bg-red-200 text-red-700">${g.calificacion}</span></div>`).join('')}</div></div>`; }).join('')}`;
+    }
+
+    // ==================== TECH: USERS ====================
+    function renderTechUsers() {
+        return `<div class="mb-6 flex items-center justify-between"><h2 class="text-lg font-semibold text-gray-800">Gestión de Usuarios</h2><button onclick="showUserModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Nuevo Usuario</button></div><div class="bg-white rounded-xl shadow-sm overflow-hidden"><table class="w-full"><thead class="bg-gray-50 border-b"><tr><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nombre</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Email</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Teléfono</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rol</th><th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th></tr></thead><tbody>${S.users.map(u => `<tr class="border-b hover:bg-gray-50"><td class="px-5 py-3 text-sm font-medium">${u.nombre}</td><td class="px-5 py-3 text-sm text-gray-600">${u.email}</td><td class="px-5 py-3 text-sm">📞 ${u.telefono || '-'}</td><td class="px-5 py-3"><span class="badge ${u.role === 'tech' ? 'bg-purple-100 text-purple-700' : u.role === 'admin' ? 'bg-blue-100 text-blue-700' : u.role === 'psychology' ? 'bg-pink-100 text-pink-700' : u.role === 'registro' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">${u.role}</span></td><td class="px-5 py-3"><div class="flex gap-2"><button onclick="editUser('${u.id}')" class="text-blue-500 text-sm"><i class="fas fa-edit"></i></button><button onclick="delUser('${u.id}')" class="text-red-500 text-sm"><i class="fas fa-trash"></i></button></div></td></tr>`).join('')}</tbody></table></div><div id="userModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay"><div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 fade-in"><div class="flex items-center justify-between mb-6"><h3 id="userModalTitle" class="text-lg font-bold text-gray-800">Nuevo Usuario</h3><button onclick="closeModal('userModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><form onsubmit="saveUser(event)"><input type="hidden" id="userEditId"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label><input type="text" id="userName" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" id="userEmail" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" id="userPassword" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="userPhone" class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Rol</label><select id="userRole" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none"><option value="admin">Administrador</option><option value="tech">Tecnología</option><option value="psychology">Psicología</option><option value="registro">Registro</option></select></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" onclick="closeModal('userModal')" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button><button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">Guardar</button></div></form></div></div>`;
+    }
+
+    function showUserModal(id = null) {
+        document.getElementById('userModal').classList.remove('hidden');
+        document.getElementById('userEditId').value = '';
+        document.getElementById('userName').value = '';
+        document.getElementById('userEmail').value = '';
+        document.getElementById('userPassword').value = '';
+        document.getElementById('userPhone').value = '';
+        document.getElementById('userModalTitle').textContent = 'Nuevo Usuario';
+        if (id) { const u = S.users.find(us => us.id === id); if (u) { document.getElementById('userEditId').value = u.id; document.getElementById('userName').value = u.nombre; document.getElementById('userEmail').value = u.email; document.getElementById('userPassword').value = u.password; document.getElementById('userPhone').value = u.telefono || ''; document.getElementById('userRole').value = u.role; document.getElementById('userModalTitle').textContent = 'Editar Usuario'; } }
+    }
+
+    function saveUser(e) {
+        e.preventDefault();
+        const id = document.getElementById('userEditId').value;
+        const data = { nombre: document.getElementById('userName').value, email: document.getElementById('userEmail').value, password: document.getElementById('userPassword').value, telefono: document.getElementById('userPhone').value, role: document.getElementById('userRole').value };
+        if (id) { const idx = S.users.findIndex(u => u.id === id); S.users[idx] = { ...S.users[idx], ...data }; }
+        else { S.users.push({ id: genId(), ...data }); }
+        save(); closeModal('userModal'); notify('Usuario guardado', 'success'); renderApp();
+    }
+
+    function editUser(id) { showUserModal(id); }
+    function delUser(id) { if (confirm('¿Eliminar?')) { S.users = S.users.filter(u => u.id !== id); save(); renderApp(); } }
+
+    // ==================== TECH: SUPPORT ====================
+    function renderTechSupport() {
+        return `<div class="mb-6 flex items-center justify-between"><h2 class="text-lg font-semibold text-gray-800">Soporte Técnico</h2><button onclick="showSupportModal()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Nuevo Ticket</button></div><div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">${statCard('Pendientes', S.techSupport.filter(t => t.status === 'pending').length, 'fas fa-clock', 'bg-orange-100 text-orange-600')}${statCard('En Proceso', S.techSupport.filter(t => t.status === 'in_progress').length, 'fas fa-spinner', 'bg-blue-100 text-blue-600')}${statCard('Resueltos', S.techSupport.filter(t => t.status === 'resolved').length, 'fas fa-check-circle', 'bg-green-100 text-green-600')}</div><div class="space-y-4">${S.techSupport.sort((a,b) => b.date.localeCompare(a.date)).map(t => `<div class="bg-white rounded-xl shadow-sm p-5 card-hover border-l-4 ${t.status === 'pending' ? 'border-orange-400' : t.status === 'in_progress' ? 'border-blue-400' : 'border-green-400'}"><div class="flex items-start justify-between mb-3"><div><h4 class="font-semibold text-gray-800">${t.title}</h4><p class="text-xs text-gray-500">${t.requester} | ${fmtDate(t.date)}</p></div><span class="badge ${t.status === 'pending' ? 'bg-orange-100 text-orange-700' : t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${t.status === 'pending' ? 'Pendiente' : t.status === 'in_progress' ? 'En Proceso' : 'Resuelto'}</span></div><p class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">${t.description}</p>${t.response ? `<div class="bg-green-50 p-3 rounded-lg"><p class="text-sm text-green-800"><i class="fas fa-reply mr-1"></i>${t.response}</p></div>` : ''}${t.status !== 'resolved' ? `<div class="flex gap-2 mt-3"><button onclick="updateSupport('${t.id}','in_progress')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs">En Proceso</button><button onclick="resolveSupport('${t.id}')" class="bg-green-600 text-white px-3 py-1.5 rounded text-xs">Resolver</button></div>` : ''}</div>`).join('') || '<div class="text-center text-gray-400 py-12">Sin tickets</div>'}</div><div id="supportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay"><div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 fade-in"><div class="flex items-center justify-between mb-6"><h3 class="text-lg font-bold text-gray-800">Nuevo Ticket</h3><button onclick="closeModal('supportModal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><form onsubmit="saveSupport(event)"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">Solicitante</label><input type="text" id="supRequester" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Título</label><input type="text" id="supTitle" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label><textarea id="supDesc" rows="4" required class="w-full border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none"></textarea></div></div><div class="flex justify-end gap-3 mt-6"><button type="button" onclick="closeModal('supportModal')" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancelar</button><button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium">Crear</button></div></form></div></div>`;
+    }
+
+    function showSupportModal() { document.getElementById('supportModal').classList.remove('hidden'); }
+    function saveSupport(e) { e.preventDefault(); S.techSupport.push({ id: genId(), title: document.getElementById('supTitle').value, description: document.getElementById('supDesc').value, requester: document.getElementById('supRequester').value, date: today(), status: 'pending', response: '' }); save(); closeModal('supportModal'); notify('Ticket creado', 'success'); renderApp(); }
+    function updateSupport(id, status) { const idx = S.techSupport.findIndex(t => t.id === id); S.techSupport[idx].status = status; save(); renderApp(); }
+    function resolveSupport(id) { const resp = prompt('Respuesta:'); if (resp !== null) { const idx = S.techSupport.findIndex(t => t.id === id); S.techSupport[idx].status = 'resolved'; S.techSupport[idx].response = resp; save(); renderApp(); } }
+
+    // ==================== NOTIFICATIONS ====================
+    function renderNotifications() {
+        return `<div class="mb-6 flex items-center justify-between"><h2 class="text-lg font-semibold text-gray-800">Notificaciones</h2><button onclick="markAllRead()" class="text-blue-600 text-sm hover:underline"><i class="fas fa-check-double mr-1"></i>Marcar todas leídas</button></div><div class="space-y-3">${S.notifications.sort((a,b) => b.date.localeCompare(a.date)).map(n => `<div class="bg-white rounded-xl shadow-sm p-5 ${n.read ? 'opacity-60' : 'border-l-4 border-blue-500'}"><div class="flex items-start justify-between"><div class="flex items-start gap-3"><div class="w-8 h-8 ${n.type === 'low_grade' ? 'bg-red-100 text-red-600' : n.type === 'notification_sent' ? 'bg-blue-100 text-blue-600' : n.type === 'new_student' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'} rounded-full flex items-center justify-center flex-shrink-0"><i class="fas ${n.type === 'low_grade' ? 'fa-exclamation-triangle' : n.type === 'notification_sent' ? 'fa-paper-plane' : n.type === 'new_student' ? 'fa-user-plus' : 'fa-info'} text-sm"></i></div><div><p class="text-sm text-gray-700">${n.message}</p><p class="text-xs text-gray-400 mt-1">${fmtDT(n.date, n.hora)}</p></div></div>${!n.read ? `<button onclick="markRead('${n.id}')" class="text-blue-500 text-xs"><i class="fas fa-check"></i></button>` : '<span class="text-xs text-gray-400">Leída</span>'}</div></div>`).join('') || '<div class="text-center text-gray-400 py-12">Sin notificaciones</div>'}</div>`;
+    }
+
+    function markRead(id) { const idx = S.notifications.findIndex(n => n.id === id); if (idx >= 0) S.notifications[idx].read = true; save(); renderApp(); }
+    function markAllRead() { S.notifications.forEach(n => n.read = true); save(); renderApp(); notify('Todas leídas', 'success'); }
+
+    // ==================== INIT ====================
+    DB.init();
+    load();
+    console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
+    renderLogin();
+    </script>
+</body>
+</html>
+
