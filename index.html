@@ -1027,8 +1027,9 @@
     load();
     console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
     renderLogin();
-    </script>
+   </script>
 
+<script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 
@@ -1051,9 +1052,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 window.testFirebase = async function() {
-
   try {
-
     await addDoc(
       collection(db, "students"),
       {
@@ -1066,16 +1065,12 @@ window.testFirebase = async function() {
     alert("Conectado correctamente");
 
   } catch(error) {
-
     console.error(error);
     alert(error.message);
-
   }
-
 };
 
 </script>
-    
+
 </body>
 </html>
-
