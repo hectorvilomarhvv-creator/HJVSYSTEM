@@ -103,8 +103,8 @@
 
     async function load() {
 
-    S.students = [];
-
+  function load() {
+    S.students = DB.get('students') || [];
     S.teachers = DB.get('teachers') || [];
     S.subjects = DB.get('subjects') || [];
     S.grades = DB.get('grades') || [];
@@ -115,15 +115,6 @@
     S.notifications = DB.get('notifications') || [];
     S.users = DB.get('users') || [];
     S.techSupport = DB.get('techSupport') || [];
-
-    await window.loadStudentsFirebase();
-
-    console.log(
-        '📦 Estado cargado | Usuarios:',
-        S.users.length,
-        '| Estudiantes:',
-        S.students.length
-    );
 }
 
     function save() {
