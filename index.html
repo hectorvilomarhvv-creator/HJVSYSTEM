@@ -1029,7 +1029,53 @@
     renderLogin();
     </script>
 <script type="module" src="firebase.js"></script>
-    
+    <script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "hjvsystem-b9b5c.firebaseapp.com",
+  projectId: "hjvsystem-b9b5c",
+  storageBucket: "hjvsystem-b9b5c.firebasestorage.app",
+  messagingSenderId: "667606918959",
+  appId: "1:667606918959:web:b24e777b4979d5bfde23da"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.testFirebase = async function() {
+
+  try {
+
+    await addDoc(
+      collection(db, "students"),
+      {
+        nombre: "Prueba GitHub",
+        curso: "5to A",
+        telefono: "8095550001"
+      }
+    );
+
+    alert("Conectado correctamente");
+
+  } catch(error) {
+
+    console.error(error);
+    alert(error.message);
+
+  }
+
+};
+
+</script>
     
 </body>
 </html>
