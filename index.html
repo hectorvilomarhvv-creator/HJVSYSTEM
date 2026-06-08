@@ -1072,7 +1072,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
- window.db = db;   
+ window.db = db; 
+    const db = getFirestore(app);
 
 window.testFirebase = async function() {
   try {
