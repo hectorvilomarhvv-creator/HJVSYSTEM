@@ -503,7 +503,7 @@
         }
     }
 
-    function saveNewStudent(e) {
+    async function saveNewStudent(e) {
         e.preventDefault();
         const data = {
             id: genId(), nombre: document.getElementById('regNombre').value, email: document.getElementById('regEmail').value,
@@ -519,13 +519,33 @@
             escuelaProcedencia: document.getElementById('regEscuela').value, condicionMedica: document.getElementById('regCondicion').value,
             seguroMedico: document.getElementById('regSeguro').value, observaciones: document.getElementById('regObservaciones').value,
         };
-        S.students.push(data);
-        S.notifications.push({ id: genId(), message: `✅ Nuevo estudiante registrado: ${data.nombre} en ${data.curso}`, date: today(), hora: nowTime(), read: false, type: 'new_student' });
-        save();
-        notify(`Estudiante ${data.nombre} registrado en ${data.curso}`, 'success');
-        nav('fichaEstudiante');
-        setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = data.id; showFicha(); } }, 200);
-    }
+       S.students.push(data);
+
+try {
+
+    await setDoc(
+        doc(window.db, "students", data.id),
+        data
+    );
+
+    console.log("✅ Guardado en Firebase");
+
+} catch (error) {
+
+    console.error("❌ Error Firebase:", error);
+
+}
+
+S.notifications.push({
+   id: genId(),
+   message: `✅ Nuevo estudiante registrado: ${data.nombre} en ${data.curso}`,
+   date: today(),
+   hora: nowTime(),
+   read: false,
+   type: 'new_student'
+});
+
+save();
 
     // ==================== FICHA ====================
     function viewFicha(id) { nav('fichaEstudiante'); setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = id; showFicha(); } }, 200); }
