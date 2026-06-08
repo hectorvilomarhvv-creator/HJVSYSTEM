@@ -1075,6 +1075,41 @@ const db = getFirestore(app);
  window.db = db; 
     const db = getFirestore(app);
 
+    window.loadStudentsFirebase = async function() {
+
+    try {
+
+        const querySnapshot = await getDocs(
+            collection(window.db, "students")
+        );
+
+        S.students = [];
+
+        querySnapshot.forEach((doc) => {
+
+            S.students.push({
+                id: doc.id,
+                ...doc.data()
+            });
+
+        });
+
+        console.log(
+            "✅ Estudiantes cargados:",
+            S.students.length
+        );
+
+    } catch(error) {
+
+        console.error(
+            "❌ Error cargando estudiantes:",
+            error
+        );
+
+    }
+
+};
+
 window.testFirebase = async function() {
   try {
     await addDoc(
