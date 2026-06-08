@@ -1047,16 +1047,10 @@ save();
    (async () => {
 
     DB.init();
-
-    await load();
-
-    console.log(
-        '🚀 Sistema inicializado'
-    );
-
-    renderLogin();
-
-})();
+load();
+console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
+renderLogin();
+       
    </script>
 
 <script type="module">
