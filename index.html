@@ -101,21 +101,20 @@
 
     let S = { currentUser: null, userType: null, currentView: 'dashboard', students: [], teachers: [], subjects: [], grades: [], notes: [], courses: [], periods: [], attendance: {}, notifications: [], users: [], techSupport: [] };
 
-    async function load() {
-
-  
-    S.students = DB.get('students') || [];
-    S.teachers = DB.get('teachers') || [];
-    S.subjects = DB.get('subjects') || [];
-    S.grades = DB.get('grades') || [];
-    S.notes = DB.get('notes') || [];
-    S.courses = DB.get('courses') || [];
-    S.periods = DB.get('periods') || ['P1','P2','P3','P4'];
-    S.attendance = DB.get('attendance') || {};
-    S.notifications = DB.get('notifications') || [];
-    S.users = DB.get('users') || [];
-    S.techSupport = DB.get('techSupport') || [];
-}
+    function load() {
+        S.students = DB.get('students') || [];
+        S.teachers = DB.get('teachers') || [];
+        S.subjects = DB.get('subjects') || [];
+        S.grades = DB.get('grades') || [];
+        S.notes = DB.get('notes') || [];
+        S.courses = DB.get('courses') || [];
+        S.periods = DB.get('periods') || ['P1','P2','P3','P4'];
+        S.attendance = DB.get('attendance') || {};
+        S.notifications = DB.get('notifications') || [];
+        S.users = DB.get('users') || [];
+        S.techSupport = DB.get('techSupport') || [];
+        console.log('📦 Estado cargado | Usuarios:', S.users.length, '| Estudiantes:', S.students.length);
+    }
 
     function save() {
         DB.set('students', S.students); DB.set('teachers', S.teachers);
@@ -178,12 +177,12 @@
                         </form>
                         <div class="mt-5 p-4 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-1.5">
                             <p class="font-semibold text-gray-700 mb-2">Cuentas de prueba:</p>
-                            <p class="flex items-center gap-1">📋 <b>Registro:</b> registro@escuela.com / </p>
-                            <p class="flex items-center gap-1">💻 <b>Tecnología:</b> tecnologia@escuela.com /</p>
-                            <p class="flex items-center gap-1">🔑 <b>Admin:</b> admin@escuela.com / </p>
+                            <p class="flex items-center gap-1">📋 <b>Registro:</b> registro@escuela.com / reg123</p>
+                            <p class="flex items-center gap-1">💻 <b>Tecnología:</b> tecnologia@escuela.com / tech123</p>
+                            <p class="flex items-center gap-1">🔑 <b>Admin:</b> admin@escuela.com / admin123</p>
                             <p class="flex items-center gap-1">👨‍🏫 <b>Profesor:</b> roberto@escuela.com / 1234</p>
                             <p class="flex items-center gap-1">🎓 <b>Estudiante:</b> maria@escuela.com / 1234</p>
-                            <p class="flex items-center gap-1">🧠 <b>Psicología:</b> psicologia@escuela.com / </p>
+                            <p class="flex items-center gap-1">🧠 <b>Psicología:</b> psicologia@escuela.com / psico123</p>
                         </div>
                     </div>
                 </div>
@@ -504,7 +503,7 @@
         }
     }
 
-    async function saveNewStudent(e) {
+    function saveNewStudent(e) {
         e.preventDefault();
         const data = {
             id: genId(), nombre: document.getElementById('regNombre').value, email: document.getElementById('regEmail').value,
@@ -520,33 +519,13 @@
             escuelaProcedencia: document.getElementById('regEscuela').value, condicionMedica: document.getElementById('regCondicion').value,
             seguroMedico: document.getElementById('regSeguro').value, observaciones: document.getElementById('regObservaciones').value,
         };
-       S.students.push(data);
-
-try {
-
-    await setDoc(
-        doc(window.db, "students", data.id),
-        data
-    );
-
-    console.log("✅ Guardado en Firebase");
-
-} catch (error) {
-
-    console.error("❌ Error Firebase:", error);
-
-}
-
-S.notifications.push({
-   id: genId(),
-   message: `✅ Nuevo estudiante registrado: ${data.nombre} en ${data.curso}`,
-   date: today(),
-   hora: nowTime(),
-   read: false,
-   type: 'new_student'
-});
-
-save();
+        S.students.push(data);
+        S.notifications.push({ id: genId(), message: `✅ Nuevo estudiante registrado: ${data.nombre} en ${data.curso}`, date: today(), hora: nowTime(), read: false, type: 'new_student' });
+        save();
+        notify(`Estudiante ${data.nombre} registrado en ${data.curso}`, 'success');
+        nav('fichaEstudiante');
+        setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = data.id; showFicha(); } }, 200);
+    }
 
     // ==================== FICHA ====================
     function viewFicha(id) { nav('fichaEstudiante'); setTimeout(() => { const sel = document.getElementById('fichaStudentSelect'); if (sel) { sel.value = id; showFicha(); } }, 200); }
@@ -1044,95 +1023,17 @@ save();
     function markAllRead() { S.notifications.forEach(n => n.read = true); save(); renderApp(); notify('Todas leídas', 'success'); }
 
     // ==================== INIT ====================
-(async () => {
-
     DB.init();
     load();
     console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
     renderLogin();
+    </script>
+    <script type="module" src="testfirebase.js"></script>
 
-})();
-       
-   </script>
+<script type="module" src="firebase.js"></script>
 
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  setDoc,
-  doc,
- 
-} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
-const firebaseConfig = {
-  apiKey: "AIzaSyDBsfByWJHf7n-SsTm8drs0ZUsdLPrfT-8",
-  authDomain: "hjvsystem-b9b5c.firebaseapp.com",
-  projectId: "hjvsystem-b9b5c",
-  storageBucket: "hjvsystem-b9b5c.firebasestorage.app",
-  messagingSenderId: "667606918959",
-  appId: "1:667606918959:web:b24e777b4979d5bfde23da"
-};
-
-
-const db = getFirestore(app);
- window.db = db; 
-    const db = getFirestore(app);
-
-   
-        const querySnapshot = await getDocs(
-            collection(window.db, "students")
-        );
-
-        S.students = [];
-
-        querySnapshot.forEach((doc) => {
-
-          S.students.push({
-    id: doc.id,
-    ...doc.data()
-});
-
-        });
-
-        console.log(
-            "✅ Estudiantes cargados:",
-            S.students.length
-        );
-
-    } catch(error) {
-
-        console.error(
-            "❌ Error cargando estudiantes:",
-            error
-        );
-
-    }
-
-};
-
-window.testFirebase = async function() {
-  try {
-    await addDoc(
-      collection(db, "students"),
-      {
-        nombre: "Prueba GitHub",
-        curso: "5to A",
-        telefono: "8095550001"
-      }
-    );
-
-    alert("Conectado correctamente");
-
-  } catch(error) {
-    console.error(error);
-    alert(error.message);
-  }
-};
-
-</script>
 
 </body>
 </html>
+
+
