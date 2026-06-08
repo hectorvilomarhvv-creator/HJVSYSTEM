@@ -1065,7 +1065,7 @@ import {
   addDoc,
   setDoc,
   doc,
-  getDocs
+ 
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDBsfByWJHf7n-SsTm8drs0ZUsdLPrfT-8",
@@ -1081,10 +1081,7 @@ const db = getFirestore(app);
  window.db = db; 
     const db = getFirestore(app);
 
-    window.loadStudentsFirebase = async function() {
-
-    try {
-
+   
         const querySnapshot = await getDocs(
             collection(window.db, "students")
         );
@@ -1093,10 +1090,10 @@ const db = getFirestore(app);
 
         querySnapshot.forEach((doc) => {
 
-            S.students.push({
-                id: doc.id,
-                ...doc.data()
-            });
+          S.students.push({
+    id: doc.id,
+    ...doc.data()
+});
 
         });
 
