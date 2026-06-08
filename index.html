@@ -102,7 +102,7 @@
     let S = { currentUser: null, userType: null, currentView: 'dashboard', students: [], teachers: [], subjects: [], grades: [], notes: [], courses: [], periods: [], attendance: {}, notifications: [], users: [], techSupport: [] };
 
     async function load() {
-        S.students = DB.get('students') || [];
+       S.students = [];
         S.teachers = DB.get('teachers') || [];
         S.subjects = DB.get('subjects') || [];
         S.grades = DB.get('grades') || [];
