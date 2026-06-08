@@ -1053,10 +1053,19 @@ save();
     function markAllRead() { S.notifications.forEach(n => n.read = true); save(); renderApp(); notify('Todas leídas', 'success'); }
 
     // ==================== INIT ====================
+   (async () => {
+
     DB.init();
-    load();
-    console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
+
+    await load();
+
+    console.log(
+        '🚀 Sistema inicializado'
+    );
+
     renderLogin();
+
+})();
    </script>
 
 <script type="module">
