@@ -1044,12 +1044,14 @@ save();
     function markAllRead() { S.notifications.forEach(n => n.read = true); save(); renderApp(); notify('Todas leídas', 'success'); }
 
     // ==================== INIT ====================
-   (async () => {
+(async () => {
 
     DB.init();
-load();
-console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
-renderLogin();
+    load();
+    console.log('🚀 Sistema inicializado | Usuarios:', S.users.length);
+    renderLogin();
+
+})();
        
    </script>
 
