@@ -102,19 +102,29 @@
     let S = { currentUser: null, userType: null, currentView: 'dashboard', students: [], teachers: [], subjects: [], grades: [], notes: [], courses: [], periods: [], attendance: {}, notifications: [], users: [], techSupport: [] };
 
     async function load() {
-       S.students = [];
-        S.teachers = DB.get('teachers') || [];
-        S.subjects = DB.get('subjects') || [];
-        S.grades = DB.get('grades') || [];
-        S.notes = DB.get('notes') || [];
-        S.courses = DB.get('courses') || [];
-        S.periods = DB.get('periods') || ['P1','P2','P3','P4'];
-        S.attendance = DB.get('attendance') || {};
-        S.notifications = DB.get('notifications') || [];
-        S.users = DB.get('users') || [];
-        S.techSupport = DB.get('techSupport') || [];
-        console.log('📦 Estado cargado | Usuarios:', S.users.length, '| Estudiantes:', S.students.length);
-    }
+
+    S.students = [];
+
+    S.teachers = DB.get('teachers') || [];
+    S.subjects = DB.get('subjects') || [];
+    S.grades = DB.get('grades') || [];
+    S.notes = DB.get('notes') || [];
+    S.courses = DB.get('courses') || [];
+    S.periods = DB.get('periods') || ['P1','P2','P3','P4'];
+    S.attendance = DB.get('attendance') || {};
+    S.notifications = DB.get('notifications') || [];
+    S.users = DB.get('users') || [];
+    S.techSupport = DB.get('techSupport') || [];
+
+    await window.loadStudentsFirebase();
+
+    console.log(
+        '📦 Estado cargado | Usuarios:',
+        S.users.length,
+        '| Estudiantes:',
+        S.students.length
+    );
+}
 
     function save() {
         DB.set('students', S.students); DB.set('teachers', S.teachers);
